@@ -41,9 +41,10 @@ export const botJobStatus = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ jobId: z.string().uuid(), after: z.number().int().min(0) }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: j } = await context.supabase.from("bot_jobs").select("status, events, error, result, created_at").eq("id", data.jobId).maybeSingle();
-    if (!j) return { status: "missing", events: [], total: 0, error: null as string | null, result: null as any, createdAt: null as string | null };
+    if (!j) return { status: "missing", events: [], total: 0, error: null as string | null, result: null as any, createdAt: null as string | null, subtasks: [] as { key: string; title: string; status: string; lines: number }[] };
     const evs = (j.events as any[]) ?? [];
-    return { status: j.status, events: evs.slice(data.after), total: evs.length, error: j.error, result: j.result, createdAt: j.created_at };
+    const { data: subs } = await context.supabase.from("bot_subtasks").select("key, title, status, lines").eq("job_id", data.jobId).order("created_at");
+    return { status: j.status, events: evs.slice(data.after), total: evs.length, error: j.error, result: j.result, createdAt: j.created_at, subtasks: (subs ?? []) as { key: string; title: string; status: string; lines: number }[] };
   });
 
 /** Latest still-active build job of a bot, so progress resumes after reopening the studio. */
@@ -63,6 +64,7 @@ export const cancelBotBuild = createServerFn({ method: "POST" })
     if (!j) return { ok: false };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("bot_jobs").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", data.jobId).in("status", ["queued", "running"]);
+    await supabaseAdmin.from("bot_subtasks").update({ status: "cancelled" }).eq("job_id", data.jobId).in("status", ["queued", "running"]);
     // Also flag the bot so a build already inside the AI call stops before saving.
     await supabaseAdmin.from("bots").update({ cancel_requested_at: new Date().toISOString() }).eq("id", j.bot_id);
     return { ok: true };

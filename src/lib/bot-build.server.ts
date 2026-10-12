@@ -170,7 +170,7 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
             };
             // Stall guard: if the stream sends no bytes for 4 minutes the connection is dead
             // even though it never closed — fail so the job can retry or end with an error.
-            const stall = () => new Promise<never>((_, reject) => { const t = setTimeout(() => reject(new Error("সার্ভারের সাড়া নেই — AI ৯০ সেকেন্ড কিছু লেখেনি")), 90_000); (stall as any).t = t; });
+            const stall = () => new Promise<never>((_, reject) => { const t = setTimeout(() => reject(new Error("সার্ভারের সাড়া নেই — AI অনেকক্ষণ কিছু লেখেনি")), reply ? 90_000 : 180_000); (stall as any).t = t; });
             let lastP = Date.now();
             for (;;) {
               if (data.mode === "build" && emit && Date.now() - lastP > 15_000) {

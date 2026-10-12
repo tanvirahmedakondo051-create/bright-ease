@@ -36,7 +36,6 @@ function Studio() {
   const { botId } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const chat = useServerFn(botChat);
   const statusFn = useServerFn(botStatus);
   const startBuildFn = useServerFn(startBotBuild);
   const jobStatusFn = useServerFn(botJobStatus);

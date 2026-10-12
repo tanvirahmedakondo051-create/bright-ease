@@ -10,33 +10,337 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as PaymentSuccessRouteImport } from './routes/payment.success'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
+import { Route as AuthenticatedAdminBrainRouteImport } from './routes/_authenticated/admin.brain'
+import { Route as AuthenticatedAdminLimitsRouteImport } from './routes/_authenticated/admin.limits'
+import { Route as AuthenticatedAdminPaymentsRouteImport } from './routes/_authenticated/admin.payments'
+import { Route as AuthenticatedAdminProvidersRouteImport } from './routes/_authenticated/admin.providers'
+import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
+import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
+import { Route as AuthenticatedBotBotIdRouteImport } from './routes/_authenticated/bot.$botId'
+import { Route as ApiPublicAurapayWebhookRouteImport } from './routes/api/public/aurapay-webhook'
+import { Route as ApiPublicGenerateRouteImport } from './routes/api/public/generate'
+import { Route as ApiPublicJobStatusRouteImport } from './routes/api/public/job-status'
+import { Route as AuthenticatedAdminPlansIndexRouteImport } from './routes/_authenticated/admin.plans.index'
+import { Route as AuthenticatedAdminPlansIdRouteImport } from './routes/_authenticated/admin.plans.$id'
+import { Route as ApiPublicCronExpiryRouteImport } from './routes/api/public/cron/expiry'
+import { Route as ApiPublicCronProcessJobsRouteImport } from './routes/api/public/cron/process-jobs'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const PaymentSuccessRoute = PaymentSuccessRouteImport.update({
+  id: '/payment/success',
+  path: '/payment/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminAnalyticsRoute =
+  AuthenticatedAdminAnalyticsRouteImport.update({
+    id: '/analytics',
+    path: '/analytics',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminBrainRoute = AuthenticatedAdminBrainRouteImport.update({
+  id: '/brain',
+  path: '/brain',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminLimitsRoute =
+  AuthenticatedAdminLimitsRouteImport.update({
+    id: '/limits',
+    path: '/limits',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPaymentsRoute =
+  AuthenticatedAdminPaymentsRouteImport.update({
+    id: '/payments',
+    path: '/payments',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminProvidersRoute =
+  AuthenticatedAdminProvidersRouteImport.update({
+    id: '/providers',
+    path: '/providers',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminSettingsRoute =
+  AuthenticatedAdminSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedBotBotIdRoute = AuthenticatedBotBotIdRouteImport.update({
+  id: '/bot/$botId',
+  path: '/bot/$botId',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiPublicAurapayWebhookRoute = ApiPublicAurapayWebhookRouteImport.update({
+  id: '/api/public/aurapay-webhook',
+  path: '/api/public/aurapay-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicGenerateRoute = ApiPublicGenerateRouteImport.update({
+  id: '/api/public/generate',
+  path: '/api/public/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicJobStatusRoute = ApiPublicJobStatusRouteImport.update({
+  id: '/api/public/job-status',
+  path: '/api/public/job-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminPlansIndexRoute =
+  AuthenticatedAdminPlansIndexRouteImport.update({
+    id: '/plans/',
+    path: '/plans/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPlansIdRoute =
+  AuthenticatedAdminPlansIdRouteImport.update({
+    id: '/plans/$id',
+    path: '/plans/$id',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const ApiPublicCronExpiryRoute = ApiPublicCronExpiryRouteImport.update({
+  id: '/api/public/cron/expiry',
+  path: '/api/public/cron/expiry',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCronProcessJobsRoute =
+  ApiPublicCronProcessJobsRouteImport.update({
+    id: '/api/public/cron/process-jobs',
+    path: '/api/public/cron/process-jobs',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/pricing': typeof PricingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/signup': typeof SignupRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/payment/success': typeof PaymentSuccessRoute
+  '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
+  '/admin/brain': typeof AuthenticatedAdminBrainRoute
+  '/admin/limits': typeof AuthenticatedAdminLimitsRoute
+  '/admin/payments': typeof AuthenticatedAdminPaymentsRoute
+  '/admin/providers': typeof AuthenticatedAdminProvidersRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/bot/$botId': typeof AuthenticatedBotBotIdRoute
+  '/api/public/aurapay-webhook': typeof ApiPublicAurapayWebhookRoute
+  '/api/public/generate': typeof ApiPublicGenerateRoute
+  '/api/public/job-status': typeof ApiPublicJobStatusRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/admin/plans/$id': typeof AuthenticatedAdminPlansIdRoute
+  '/api/public/cron/expiry': typeof ApiPublicCronExpiryRoute
+  '/api/public/cron/process-jobs': typeof ApiPublicCronProcessJobsRoute
+  '/admin/plans/': typeof AuthenticatedAdminPlansIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/pricing': typeof PricingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/signup': typeof SignupRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/payment/success': typeof PaymentSuccessRoute
+  '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
+  '/admin/brain': typeof AuthenticatedAdminBrainRoute
+  '/admin/limits': typeof AuthenticatedAdminLimitsRoute
+  '/admin/payments': typeof AuthenticatedAdminPaymentsRoute
+  '/admin/providers': typeof AuthenticatedAdminProvidersRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/bot/$botId': typeof AuthenticatedBotBotIdRoute
+  '/api/public/aurapay-webhook': typeof ApiPublicAurapayWebhookRoute
+  '/api/public/generate': typeof ApiPublicGenerateRoute
+  '/api/public/job-status': typeof ApiPublicJobStatusRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
+  '/admin/plans/$id': typeof AuthenticatedAdminPlansIdRoute
+  '/api/public/cron/expiry': typeof ApiPublicCronExpiryRoute
+  '/api/public/cron/process-jobs': typeof ApiPublicCronProcessJobsRoute
+  '/admin/plans': typeof AuthenticatedAdminPlansIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/login': typeof LoginRoute
+  '/pricing': typeof PricingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/signup': typeof SignupRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/payment/success': typeof PaymentSuccessRoute
+  '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
+  '/_authenticated/admin/brain': typeof AuthenticatedAdminBrainRoute
+  '/_authenticated/admin/limits': typeof AuthenticatedAdminLimitsRoute
+  '/_authenticated/admin/payments': typeof AuthenticatedAdminPaymentsRoute
+  '/_authenticated/admin/providers': typeof AuthenticatedAdminProvidersRoute
+  '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/bot/$botId': typeof AuthenticatedBotBotIdRoute
+  '/api/public/aurapay-webhook': typeof ApiPublicAurapayWebhookRoute
+  '/api/public/generate': typeof ApiPublicGenerateRoute
+  '/api/public/job-status': typeof ApiPublicJobStatusRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/admin/plans/$id': typeof AuthenticatedAdminPlansIdRoute
+  '/api/public/cron/expiry': typeof ApiPublicCronExpiryRoute
+  '/api/public/cron/process-jobs': typeof ApiPublicCronProcessJobsRoute
+  '/_authenticated/admin/plans/': typeof AuthenticatedAdminPlansIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/pricing'
+    | '/reset-password'
+    | '/signup'
+    | '/admin'
+    | '/dashboard'
+    | '/payment/success'
+    | '/admin/analytics'
+    | '/admin/brain'
+    | '/admin/limits'
+    | '/admin/payments'
+    | '/admin/providers'
+    | '/admin/settings'
+    | '/admin/users'
+    | '/bot/$botId'
+    | '/api/public/aurapay-webhook'
+    | '/api/public/generate'
+    | '/api/public/job-status'
+    | '/admin/'
+    | '/admin/plans/$id'
+    | '/api/public/cron/expiry'
+    | '/api/public/cron/process-jobs'
+    | '/admin/plans/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/pricing'
+    | '/reset-password'
+    | '/signup'
+    | '/dashboard'
+    | '/payment/success'
+    | '/admin/analytics'
+    | '/admin/brain'
+    | '/admin/limits'
+    | '/admin/payments'
+    | '/admin/providers'
+    | '/admin/settings'
+    | '/admin/users'
+    | '/bot/$botId'
+    | '/api/public/aurapay-webhook'
+    | '/api/public/generate'
+    | '/api/public/job-status'
+    | '/admin'
+    | '/admin/plans/$id'
+    | '/api/public/cron/expiry'
+    | '/api/public/cron/process-jobs'
+    | '/admin/plans'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/login'
+    | '/pricing'
+    | '/reset-password'
+    | '/signup'
+    | '/_authenticated/admin'
+    | '/_authenticated/dashboard'
+    | '/payment/success'
+    | '/_authenticated/admin/analytics'
+    | '/_authenticated/admin/brain'
+    | '/_authenticated/admin/limits'
+    | '/_authenticated/admin/payments'
+    | '/_authenticated/admin/providers'
+    | '/_authenticated/admin/settings'
+    | '/_authenticated/admin/users'
+    | '/_authenticated/bot/$botId'
+    | '/api/public/aurapay-webhook'
+    | '/api/public/generate'
+    | '/api/public/job-status'
+    | '/_authenticated/admin/'
+    | '/_authenticated/admin/plans/$id'
+    | '/api/public/cron/expiry'
+    | '/api/public/cron/process-jobs'
+    | '/_authenticated/admin/plans/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  PricingRoute: typeof PricingRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  SignupRoute: typeof SignupRoute
+  PaymentSuccessRoute: typeof PaymentSuccessRoute
+  ApiPublicAurapayWebhookRoute: typeof ApiPublicAurapayWebhookRoute
+  ApiPublicGenerateRoute: typeof ApiPublicGenerateRoute
+  ApiPublicJobStatusRoute: typeof ApiPublicJobStatusRoute
+  ApiPublicCronExpiryRoute: typeof ApiPublicCronExpiryRoute
+  ApiPublicCronProcessJobsRoute: typeof ApiPublicCronProcessJobsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +352,234 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/payment/success': {
+      id: '/payment/success'
+      path: '/payment/success'
+      fullPath: '/payment/success'
+      preLoaderRoute: typeof PaymentSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/analytics': {
+      id: '/_authenticated/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/brain': {
+      id: '/_authenticated/admin/brain'
+      path: '/brain'
+      fullPath: '/admin/brain'
+      preLoaderRoute: typeof AuthenticatedAdminBrainRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/limits': {
+      id: '/_authenticated/admin/limits'
+      path: '/limits'
+      fullPath: '/admin/limits'
+      preLoaderRoute: typeof AuthenticatedAdminLimitsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/payments': {
+      id: '/_authenticated/admin/payments'
+      path: '/payments'
+      fullPath: '/admin/payments'
+      preLoaderRoute: typeof AuthenticatedAdminPaymentsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/providers': {
+      id: '/_authenticated/admin/providers'
+      path: '/providers'
+      fullPath: '/admin/providers'
+      preLoaderRoute: typeof AuthenticatedAdminProvidersRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/settings': {
+      id: '/_authenticated/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/users': {
+      id: '/_authenticated/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/bot/$botId': {
+      id: '/_authenticated/bot/$botId'
+      path: '/bot/$botId'
+      fullPath: '/bot/$botId'
+      preLoaderRoute: typeof AuthenticatedBotBotIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/aurapay-webhook': {
+      id: '/api/public/aurapay-webhook'
+      path: '/api/public/aurapay-webhook'
+      fullPath: '/api/public/aurapay-webhook'
+      preLoaderRoute: typeof ApiPublicAurapayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/generate': {
+      id: '/api/public/generate'
+      path: '/api/public/generate'
+      fullPath: '/api/public/generate'
+      preLoaderRoute: typeof ApiPublicGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/job-status': {
+      id: '/api/public/job-status'
+      path: '/api/public/job-status'
+      fullPath: '/api/public/job-status'
+      preLoaderRoute: typeof ApiPublicJobStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin/plans/': {
+      id: '/_authenticated/admin/plans/'
+      path: '/plans'
+      fullPath: '/admin/plans/'
+      preLoaderRoute: typeof AuthenticatedAdminPlansIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/plans/$id': {
+      id: '/_authenticated/admin/plans/$id'
+      path: '/plans/$id'
+      fullPath: '/admin/plans/$id'
+      preLoaderRoute: typeof AuthenticatedAdminPlansIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/public/cron/expiry': {
+      id: '/api/public/cron/expiry'
+      path: '/api/public/cron/expiry'
+      fullPath: '/api/public/cron/expiry'
+      preLoaderRoute: typeof ApiPublicCronExpiryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/process-jobs': {
+      id: '/api/public/cron/process-jobs'
+      path: '/api/public/cron/process-jobs'
+      fullPath: '/api/public/cron/process-jobs'
+      preLoaderRoute: typeof ApiPublicCronProcessJobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRoute
+  AuthenticatedAdminBrainRoute: typeof AuthenticatedAdminBrainRoute
+  AuthenticatedAdminLimitsRoute: typeof AuthenticatedAdminLimitsRoute
+  AuthenticatedAdminPaymentsRoute: typeof AuthenticatedAdminPaymentsRoute
+  AuthenticatedAdminProvidersRoute: typeof AuthenticatedAdminProvidersRoute
+  AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
+  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminPlansIdRoute: typeof AuthenticatedAdminPlansIdRoute
+  AuthenticatedAdminPlansIndexRoute: typeof AuthenticatedAdminPlansIndexRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminAnalyticsRoute: AuthenticatedAdminAnalyticsRoute,
+  AuthenticatedAdminBrainRoute: AuthenticatedAdminBrainRoute,
+  AuthenticatedAdminLimitsRoute: AuthenticatedAdminLimitsRoute,
+  AuthenticatedAdminPaymentsRoute: AuthenticatedAdminPaymentsRoute,
+  AuthenticatedAdminProvidersRoute: AuthenticatedAdminProvidersRoute,
+  AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
+  AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminPlansIdRoute: AuthenticatedAdminPlansIdRoute,
+  AuthenticatedAdminPlansIndexRoute: AuthenticatedAdminPlansIndexRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedBotBotIdRoute: typeof AuthenticatedBotBotIdRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedBotBotIdRoute: AuthenticatedBotBotIdRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  LoginRoute: LoginRoute,
+  PricingRoute: PricingRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  SignupRoute: SignupRoute,
+  PaymentSuccessRoute: PaymentSuccessRoute,
+  ApiPublicAurapayWebhookRoute: ApiPublicAurapayWebhookRoute,
+  ApiPublicGenerateRoute: ApiPublicGenerateRoute,
+  ApiPublicJobStatusRoute: ApiPublicJobStatusRoute,
+  ApiPublicCronExpiryRoute: ApiPublicCronExpiryRoute,
+  ApiPublicCronProcessJobsRoute: ApiPublicCronProcessJobsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

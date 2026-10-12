@@ -1,0 +1,69 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791714022251,
+      "tag": "0000_hexa_full_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791714569612,
+      "tag": "0001_telegram_bots",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791716719964,
+      "tag": "0002_add_bot_admin_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791723046863,
+      "tag": "0003_bot_only_product",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791729481937,
+      "tag": "0004_bot_studio",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791731361776,
+      "tag": "0005_bot_product_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791733932251,
+      "tag": "0006_premium_emoji_library",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791743608997,
+      "tag": "0007_bot_emoji_mode",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791771744143,
+      "tag": "0008_bot_jobs",
+      "breakpoints": true
+    }
+  ]
+}

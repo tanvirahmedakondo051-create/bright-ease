@@ -1,12 +1,14 @@
-# Bright Ease
+# Pixel Perfect Implementation
 
-Make a simple
+Implement exactly the screenshot and nothing else
 
 This project was built with [Lovable](https://lovable.dev).
 
+**Live app**: https://pixel-perfect-showcase-5608.lovable.app
+
 ## Build with Lovable
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/fae7c561-1d59-48ab-96e6-1fd6d53f4e7b).
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/3572b892-5b47-4784-b42e-b77f6b2f6e0d).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
 - **Stay in sync**: every change made in Lovable is committed straight to this repository.

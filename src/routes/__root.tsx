@@ -137,7 +137,7 @@ function MaintenanceGate({ children }: { children: ReactNode }) {
   const { user } = useSession();
   const { data: isAdmin } = useIsAdmin(user?.id);
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const exempt = path.startsWith("/login") || path.startsWith("/s/");
+  const exempt = path.startsWith("/login") || path.startsWith("/signup") || path.startsWith("/reset-password") || path.startsWith("/s/");
   if (settings?.maintenance_mode && !isAdmin && !exempt) {
     return (
       <div className="flex min-h-screen items-center justify-center px-6 text-center">

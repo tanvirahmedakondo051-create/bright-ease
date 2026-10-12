@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { adminGetAuraKey, adminGetBotSettings, adminGetDeployToken, adminNewDeployToken, adminSaveBotSettings, adminSaveEmojiMap, adminSetAuraKey, adminTestAgent } from "@/lib/admin.functions";
 import { PageTitle, Panel } from "@/components/admin/ui";
@@ -88,7 +88,7 @@ function Settings() {
       <Panel title="৫ মিনিট টেস্ট VPS agent">
         <p className="mb-3 text-sm text-muted-foreground">এটি শুধু অস্থায়ী Telegram bot test চালায়; website publish বা permanent hosting করে না।</p>
         <div className="grid gap-3 sm:grid-cols-3"><Field label="VPS IP"><input className={`${inputCls} font-en`} value={form.server_ip} onChange={set("server_ip")} /></Field><Field label="Agent host"><input className={`${inputCls} font-en`} value={form.agent_host} onChange={set("agent_host")} /></Field><Field label="Agent port"><input type="number" className={inputCls} value={form.agent_port} onChange={set("agent_port")} /></Field></div>
-        <DeployControls />
+        <DeployControls host={form.agent_host} port={Number(form.agent_port) || 8443} />
       </Panel>
 
       <AuraKey />
@@ -102,9 +102,22 @@ function AuraKey() {
   return <Panel title="AuraPay"><Field label={`API key ${data?.masked ? "(সেভ আছে)" : ""}`}><div className="flex gap-2"><input type="password" className={`${inputCls} font-en`} value={value} onChange={(event) => setValue(event.target.value)} /><Button onClick={async () => { const result = await save({ data: { key: value } }); if ("error" in result) return toast.error(result.error); setValue(""); refetch(); toast.success("AuraPay key সেভ হয়েছে"); }}>Save</Button></div></Field></Panel>;
 }
 
-function DeployControls() {
+function DeployControls({ host, port }: { host: string; port: number }) {
   const get = useServerFn(adminGetDeployToken); const create = useServerFn(adminNewDeployToken); const test = useServerFn(adminTestAgent); const { data, refetch } = useQuery({ queryKey: ["deploy-token"], queryFn: () => get() });
-  return <div className="mt-4 flex flex-wrap gap-2"><Button variant="outline" onClick={async () => { const result = await create(); if ("error" in result) return toast.error(result.error); await navigator.clipboard.writeText(result.token); refetch(); toast.success("নতুন agent token কপি হয়েছে"); }}>{data?.masked ? "Agent token বদলান" : "Agent token তৈরি করুন"}</Button><Button variant="outline" onClick={async () => { const result = await test(); "error" in result ? toast.error(result.error) : toast.success("Test agent online"); }}>Agent connection test</Button></div>;
+  const [token, setToken] = useState(""); const [show, setShow] = useState(false);
+  const origin = typeof window !== "undefined" && !/id-preview--|localhost|lovableproject\.com/.test(window.location.origin) ? window.location.origin : "https://bright-ease.lovable.app";
+  const cmd = token && host.trim() ? `curl -fsSL ${origin}/install-agent.sh | sudo HEXA_APP_URL=${origin} bash -s -- ${token} ${host.trim()} "" ${port}` : "";
+  const copy = async (text: string, msg: string) => { await navigator.clipboard.writeText(text); toast.success(msg); };
+  return <div className="mt-4 space-y-3">
+    <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={async () => { const result = await create(); if ("error" in result) return toast.error(result.error); setToken(result.token); setShow(true); refetch(); toast.success("নতুন agent token তৈরি হয়েছে"); }}>{token || data?.masked ? "নতুন token" : "Agent token তৈরি করুন"}</Button><Button variant="outline" onClick={async () => { const result = await test(); "error" in result ? toast.error(result.error) : toast.success("Test agent online"); }}>Agent connection test</Button></div>
+    {token ? <>
+      <Field label="Agent token (শুধু এখন পুরোটা দেখা যাবে)"><div className="flex gap-2"><input readOnly type={show ? "text" : "password"} value={token} className={`${inputCls} font-en`} /><Button type="button" variant="outline" size="icon" aria-label={show ? "লুকান" : "দেখুন"} onClick={() => setShow(!show)}>{show ? <EyeOff /> : <Eye />}</Button><Button type="button" variant="outline" onClick={() => copy(token, "Token কপি হয়েছে")}><Copy />Copy</Button></div></Field>
+      <div><p className="mb-1 text-sm font-medium">VPS connect command</p>
+        {cmd ? <><pre className="whitespace-pre-wrap break-all rounded-xl border border-border bg-background p-3 font-en text-xs">{cmd}</pre><Button type="button" className="mt-2" onClick={() => copy(cmd, "কমান্ড কপি হয়েছে — VPS-এ root হিসেবে রান করুন")}><Copy />কমান্ড কপি করুন</Button><p className="mt-1 text-xs text-muted-foreground">VPS terminal-এ paste করে Enter দিন। শেষ হলে "Agent connection test" চাপুন। নতুন token বানালে আগের token আর কাজ করবে না।</p></>
+          : <p className="text-sm text-destructive">আগে Agent host দিন ও সেভ করুন</p>}
+      </div>
+    </> : data?.masked ? <p className="text-xs text-muted-foreground font-en">Token: {data.masked} — পুরো কমান্ড দেখতে "নতুন token" চাপুন</p> : null}
+  </div>;
 }
 function EmojiLibrary({ rows, setRows, onSave }: { rows: EmojiRow[]; setRows: (r: EmojiRow[]) => void; onSave: (r?: EmojiRow[]) => void }) {
   const blank: EmojiRow = { key: "", id: "", fallback: "🔹", style: "", kind: "button" };

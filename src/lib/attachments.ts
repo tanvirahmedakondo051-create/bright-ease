@@ -51,7 +51,14 @@ function readDataUrl(file: File): Promise<string> {
 
 async function readZip(file: File): Promise<string> {
   const { unzipSync, strFromU8 } = await import("fflate");
-  const files = unzipSync(new Uint8Array(await file.arrayBuffer()));
+  let total = 0, n = 0;
+  const files = unzipSync(new Uint8Array(await file.arrayBuffer()), {
+    filter: (f) => {
+      if (++n > 200) throw new Error("ZIP-এ ২০০-র বেশি ফাইল");
+      total += f.originalSize; if (total > 20 * 1024 * 1024) throw new Error("ZIP খোলার পর ২০ MB-র বেশি");
+      return !f.name.includes("..") && !f.name.startsWith("/") && !/^[a-z]:/i.test(f.name);
+    },
+  });
   let out = "", skipped = 0;
   for (const [path, bytes] of Object.entries(files)) {
     if (path.endsWith("/") || path.includes("__MACOSX")) continue;

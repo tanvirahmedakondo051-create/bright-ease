@@ -352,10 +352,10 @@ export const botChat = createServerFn({ method: "POST" })
   .inputValidator((d: { botId: string; prompt: string; mode: "chat" | "plan" | "build"; errorLog?: string; questionAnswers?: BotAnswer[]; attachments?: { name: string; kind: "text" | "image"; content: string }[] }) =>
     z.object({
       botId: z.string().uuid(),
-      prompt: z.string().min(1).max(6000),
+      prompt: z.string().min(1).max(60000),
       mode: z.enum(["chat", "plan", "build"]),
-      errorLog: z.string().max(6000).optional(),
-      questionAnswers: z.array(z.object({ question: z.string().max(500), answer: z.string().max(1000) })).max(3).optional(),
+      errorLog: z.string().max(60000).optional(),
+      questionAnswers: z.array(z.object({ question: z.string().max(4000), answer: z.string().max(20000) })).max(20).optional(),
       attachments: z.array(z.object({ name: z.string().max(200), kind: z.enum(["text", "image"]), content: z.string().max(6_000_000) })).max(6).optional()
         .refine((a) => !a || (a.filter((x) => x.kind === "image").length <= 3 && a.every((x) => x.kind === "image" ? /^data:image\/(jpeg|png|webp);base64,/.test(x.content) : x.content.length <= 300_000)), "Invalid attachments"),
     }).parse(d))
@@ -367,9 +367,9 @@ export const botChat = createServerFn({ method: "POST" })
 
 const buildInput = z.object({
   botId: z.string().uuid(),
-  prompt: z.string().min(1).max(6000),
-  errorLog: z.string().max(6000).optional(),
-  questionAnswers: z.array(z.object({ question: z.string().max(500), answer: z.string().max(1000) })).max(3).optional(),
+  prompt: z.string().min(1).max(60000),
+  errorLog: z.string().max(60000).optional(),
+  questionAnswers: z.array(z.object({ question: z.string().max(4000), answer: z.string().max(20000) })).max(20).optional(),
   attachments: z.array(z.object({ name: z.string().max(200), kind: z.enum(["text", "image"]), content: z.string().max(6_000_000) })).max(6).optional()
     .refine((a) => !a || (a.filter((x) => x.kind === "image").length <= 3 && a.every((x) => x.kind === "image" ? /^data:image\/(jpeg|png|webp);base64,/.test(x.content) : x.content.length <= 300_000)), "Invalid attachments"),
 });

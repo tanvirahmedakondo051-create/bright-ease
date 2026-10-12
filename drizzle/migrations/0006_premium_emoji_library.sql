@@ -1,0 +1,1 @@
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS button_emoji_meta jsonb NOT NULL DEFAULT '{}'::jsonb;

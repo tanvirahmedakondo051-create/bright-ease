@@ -1,0 +1,1 @@
+ALTER TABLE public.bots ADD COLUMN IF NOT EXISTS emoji_mode text NOT NULL DEFAULT '';

@@ -106,7 +106,7 @@ function DeployControls({ host, port }: { host: string; port: number }) {
   const get = useServerFn(adminGetDeployToken); const create = useServerFn(adminNewDeployToken); const test = useServerFn(adminTestAgent); const { data, refetch } = useQuery({ queryKey: ["deploy-token"], queryFn: () => get() });
   const [token, setToken] = useState(""); const [show, setShow] = useState(false);
   const origin = typeof window !== "undefined" && !/id-preview--|localhost|lovableproject\.com/.test(window.location.origin) ? window.location.origin : "https://bright-ease.lovable.app";
-  const cmd = token && host.trim() ? `curl -fsSL ${origin}/install-agent.sh | sudo HEXA_APP_URL=${origin} bash -s -- ${token} ${host.trim()} "" ${port}` : "";
+  const cmd = token && host.trim() ? `curl -fsSL ${origin}/install-agent.sh | sudo HEXA_APP_URL=${origin} bash -s -- ${token} ${host.trim()} "" ${port} && sudo systemctl restart hexa-agent` : "";
   const copy = async (text: string, msg: string) => { await navigator.clipboard.writeText(text); toast.success(msg); };
   return <div className="mt-4 space-y-3">
     <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={async () => { const result = await create(); if ("error" in result) return toast.error(result.error); setToken(result.token); setShow(true); refetch(); toast.success("নতুন agent token তৈরি হয়েছে"); }}>{token || data?.masked ? "নতুন token" : "Agent token তৈরি করুন"}</Button><Button variant="outline" onClick={async () => { const result = await test(); "error" in result ? toast.error(result.error) : toast.success("Test agent online"); }}>Agent connection test</Button></div>

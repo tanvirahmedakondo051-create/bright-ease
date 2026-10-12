@@ -98,6 +98,8 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
-systemctl enable --now hexa-agent
+systemctl enable hexa-agent
+# restart (not just start) so a re-run always loads the new token
+systemctl restart hexa-agent
 command -v ufw >/dev/null && ufw allow "$PORT"/tcp && ufw allow 80/tcp && ufw allow 443/tcp || true
 echo "✅ Hexa deploy agent running on https://$AGENT_HOST:$PORT"

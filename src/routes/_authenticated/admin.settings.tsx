@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { adminGetAuraKey, adminGetBotSettings, adminGetDeployToken, adminNewDeployToken, adminSaveBotSettings, adminSaveEmojiMap, adminSetAuraKey, adminTestAgent } from "@/lib/admin.functions";
 import { PageTitle, Panel } from "@/components/admin/ui";

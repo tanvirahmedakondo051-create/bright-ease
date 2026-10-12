@@ -138,15 +138,15 @@
 
 @keyframes hero-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes float-symbol { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-18px) rotate(5deg); } }
-@keyframes art-drift { 0%, 100% { transform: translate3d(0, 0, 0) rotate(-3deg); } 50% { transform: translate3d(0, -14px, 0) rotate(2deg); } }
+@keyframes art-drift { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -14px, 0); } }
 @keyframes auth-scan { 0% { transform: translateY(-20vh); opacity: 0; } 20%, 70% { opacity: .3; } 100% { transform: translateY(120vh); opacity: 0; } }
 @keyframes scan { from { transform: translateY(0); opacity: 0; } 15%, 70% { opacity: .55; } to { transform: translateY(640px); opacity: 0; } }
 .hero-grid { background-image: linear-gradient(to right, oklch(1 0 0 / .035) 1px, transparent 1px), linear-gradient(to bottom, oklch(1 0 0 / .035) 1px, transparent 1px); background-size: 44px 44px; mask-image: linear-gradient(to bottom, black 20%, transparent 95%); }
 .hero-particles { background-image: radial-gradient(circle at 20% 24%, var(--primary) 0 1px, transparent 1.5px), radial-gradient(circle at 76% 18%, var(--success) 0 1px, transparent 1.5px), radial-gradient(circle at 62% 70%, var(--muted-foreground) 0 1px, transparent 1.5px); background-size: 190px 190px, 230px 230px, 150px 150px; opacity: .35; }
 .hero-scan { background: linear-gradient(90deg, transparent, var(--success), transparent); animation: scan 9s linear infinite; }
 .float-symbol { position: absolute; animation: float-symbol 8s ease-in-out infinite; }
-.hero-art { position: absolute; z-index: 0; width: clamp(280px, 32vw, 520px); opacity: .42; filter: saturate(.92) drop-shadow(0 24px 48px oklch(0 0 0 / .5)); animation: art-drift 9s ease-in-out infinite; }
-.hero-art img { width: 100%; height: auto; }
+.hero-art { position: absolute; z-index: 0; width: clamp(280px, 32vw, 520px); opacity: .9; animation: art-drift 9s ease-in-out infinite; will-change: transform; backface-visibility: hidden; transform: translateZ(0); }
+.hero-art img { width: 100%; height: auto; image-rendering: auto; }
 .hero-art-left { left: max(-210px, -10vw); top: 14%; clip-path: inset(0 65% 0 0); }
 .hero-art-right { right: max(-210px, -10vw); top: 22%; clip-path: inset(0 0 0 64%); animation-delay: -4s; }
 .auth-backdrop { background-image: linear-gradient(to right, oklch(1 0 0 / .035) 1px, transparent 1px), linear-gradient(to bottom, oklch(1 0 0 / .035) 1px, transparent 1px); background-size: 42px 42px; }
@@ -158,7 +158,7 @@
 .motion-delay-1 { animation-delay: .12s; }.motion-delay-2 { animation-delay: .24s; }.motion-delay-3 { animation-delay: .36s; }
 .reveal-card { transition: transform .25s ease, border-color .25s ease, background-color .25s ease; }
 .reveal-card:hover { transform: translateY(-5px); border-color: color-mix(in oklab, var(--success) 45%, transparent); }
-@media (max-width: 640px) { .hero-art { width: 210px; opacity: .52; } .hero-art-left { left: -10px; top: 22%; } .hero-art-right { right: -10px; top: 50%; } }
+@media (max-width: 640px) { .hero-art { width: 210px; opacity: .9; } .hero-art-left { left: -10px; top: 22%; } .hero-art-right { right: -10px; top: 50%; } }
 @media (prefers-reduced-motion: reduce) { .hero-scan, .float-symbol, .hero-art, .auth-scanline, .motion-enter { animation: none; } .reveal-card { transition: none; } }
 
 @keyframes progress-slide {

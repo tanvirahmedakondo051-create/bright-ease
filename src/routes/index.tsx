@@ -47,10 +47,10 @@ function Landing() {
           </div>
         </div>
 
-        <div className="motion-enter motion-delay-3 relative z-10 mx-auto mt-14 max-w-4xl rounded-2xl border border-border bg-card/75 p-3 shadow-2xl backdrop-blur-xl sm:p-5">
+        <div className="motion-enter motion-delay-3 relative z-10 mx-auto mt-14 max-w-4xl rounded-2xl border border-border bg-card p-3 shadow-2xl sm:p-5">
           <div className="flex items-center gap-2 border-b border-border pb-3 text-xs text-muted-foreground"><span className="size-2 rounded-full bg-primary" /><span className="size-2 rounded-full bg-warning" /><span className="size-2 rounded-full bg-success" /><span className="ml-2 font-en">Hexa Bot Studio</span></div>
           <div className="grid gap-3 pt-4 md:grid-cols-[1fr_1.15fr]">
-            <div className="rounded-xl border border-border bg-background/65 p-4"><p className="text-xs text-muted-foreground">আপনি</p><p className="mt-3 text-sm">আমার দোকানের জন্য order, payment আর admin notification সহ bot বানাও</p><div className="mt-4 flex items-center gap-2 rounded-xl border border-input bg-card p-2 text-sm text-muted-foreground"><span className="flex-1">বট কী করবে বাংলায় লিখুন…</span><span className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground"><Send className="size-4" /></span></div></div>
+            <div className="rounded-xl border border-border bg-background p-4"><p className="text-xs text-muted-foreground">আপনি</p><p className="mt-3 text-sm">আমার দোকানের জন্য order, payment আর admin notification সহ bot বানাও</p><div className="mt-4 flex items-center gap-2 rounded-xl border border-input bg-card p-2 text-sm text-muted-foreground"><span className="flex-1">বট কী করবে বাংলায় লিখুন…</span><span className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground"><Send className="size-4" /></span></div></div>
             <div className="rounded-xl border border-success/25 bg-success/5 p-4"><div className="flex items-center gap-2 text-sm font-semibold text-success"><Bot className="size-4" /> Build ready</div><div className="mt-4 grid grid-cols-3 gap-2 font-en text-xs">{["app.py", "requirements.txt", "README.md"].map((file) => <span key={file} className="rounded-lg border border-border bg-card px-2 py-2 text-center">{file}</span>)}</div><div className="mt-5 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full w-full bg-success" /></div><p className="mt-2 text-xs text-muted-foreground">Plan → Writing app.py → Ready</p></div>
           </div>
         </div>

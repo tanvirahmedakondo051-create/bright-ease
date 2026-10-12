@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowUp, Bot, FileCode2, FolderOpen, Hammer, Image as ImageIcon, Loader2, Paperclip, Pencil, RefreshCw, Settings, Sparkles, Wrench, X } from "lucide-react";
+import { AlertTriangle, ArrowUp, Bot, FileCode2, FileText, Video, FolderOpen, Hammer, Image as ImageIcon, Loader2, Paperclip, Pencil, RefreshCw, Settings, Sparkles, Wrench, X } from "lucide-react";
 import { readAttachments, type Attachment } from "@/lib/attachments";
 import { zipSync, strToU8 } from "fflate";
 import { supabase } from "@/integrations/supabase/client";

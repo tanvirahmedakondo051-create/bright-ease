@@ -42,7 +42,7 @@ const limitReached = (value: number, limit: unknown) => {
   return cap >= 0 && value >= cap;
 };
 
-export async function runBotChat(db: any, userId: string, data: BotChatData, emit?: Emit) {
+export async function runBotChat(db: any, userId: string, data: BotChatData, emit?: Emit, ctx: { jobId?: string } = {}) {
   const started = Date.now();
   const { effectivePlan, allowedProviders } = await import("@/lib/plan.server");
   const bot = await loadOwned(db, userId, data.botId);
@@ -120,7 +120,7 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
   let imageNotice = "";
   const plain = (ms: { role: string; content: any }[]) => imagesOn ? ms : ms.map((m) => Array.isArray(m.content) ? { ...m, content: m.content.filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n") } : m);
 
-  const callAI = async (messagesIn: { role: string; content: any }[], prefix = "") => {
+  const callAI = async (messagesIn: { role: string; content: any }[], prefix = "", onProg?: (lines: number) => Promise<void>) => {
     let messages = plain(messagesIn);
     let reply = "", tokens = 0, finish = "";
     let lastProviderStatus = 0;
@@ -173,10 +173,11 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
             const stall = () => new Promise<never>((_, reject) => { const t = setTimeout(() => reject(new Error("সার্ভারের সাড়া নেই — AI অনেকক্ষণ কিছু লেখেনি")), reply ? 90_000 : 180_000); (stall as any).t = t; });
             let lastP = Date.now();
             for (;;) {
-              if (data.mode === "build" && emit && Date.now() - lastP > 15_000) {
+              if (data.mode === "build" && (onProg || emit) && Date.now() - lastP > 15_000) {
                 lastP = Date.now();
                 const lines = (prefix + reply).split("\n").length;
-                await emit(`AI কোড লিখছে… ${lines} লাইন লেখা হয়েছে`);
+                if (onProg) await onProg(lines);
+                else await emit!(`AI কোড লিখছে… ${lines} লাইন লেখা হয়েছে`);
               }
               const s = stall();
               const { done, value } = await Promise.race([reader.read(), s]).finally(() => clearTimeout((stall as any).t));
@@ -200,13 +201,13 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
 
   // Build/upgrade: if the reply stops mid-file, ask the model to continue (max 3) and join the parts.
   let extraTokens = 0;
-  const generate = async (msgs: { role: string; content: string }[]) => {
-    let r = await callAI(msgs);
+  const generate = async (msgs: { role: string; content: string }[], onProg?: (lines: number) => Promise<void>) => {
+    let r = await callAI(msgs, "", onProg);
     if (!r.reply || data.mode !== "build") return r;
     let text = r.reply;
     for (let i = 0; i < 3 && (/length|max_tokens/i.test(r.finish) || hasUnclosedBlock(text)); i++) {
       await emit?.("উত্তর লম্বা — বাকি অংশ আনা হচ্ছে…");
-      const c = await callAI([...msgs, { role: "assistant", content: text }, { role: "user", content: "Your reply was cut off. Continue EXACTLY where you stopped, starting with the very next character. Do not repeat earlier text, no preface, keep the same === FILE === format." }], text);
+      const c = await callAI([...msgs, { role: "assistant", content: text }, { role: "user", content: "Your reply was cut off. Continue EXACTLY where you stopped, starting with the very next character. Do not repeat earlier text, no preface, keep the same === FILE === format." }], text, onProg);
       if (!c.reply) break;
       text += c.reply; extraTokens += c.tokens; r = { ...c, reply: text, tokens: r.tokens };
     }
@@ -225,7 +226,60 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
     await db.from("bots").update({ messages: msgs, updated_at: now } as any).eq("id", bot.id);
     return { ok: true, coins: 0, chat: true, needsBuildFix: verdict === "code_bug", fixBrief: brief, imageNotice };
   }
-  let { reply, tokens, finish, lastProviderStatus } = await generate(messages);
+  // Parallel sub-agents for big new builds: Core first, then User + Admin at the same time,
+  // merged into one app.py by code. Finished sections are reused when the build is retried.
+  const runSplit = async () => {
+    const { corePrompt, sectionPrompt, parseCore, parseSection, mergeSections, promptSig, SECTION_TITLES } = await import("@/lib/sub-agents");
+    const sig = promptSig(data.prompt + JSON.stringify(data.questionAnswers ?? []));
+    const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const sub = async (key: "core" | "user" | "admin", sys: string) => {
+      const { data: prev } = await db.from("bot_subtasks").select("output").eq("bot_id", bot.id).eq("sig", sig).eq("key", key).eq("status", "done").gte("created_at", since).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (prev?.output) {
+        await db.from("bot_subtasks").insert({ job_id: ctx.jobId, bot_id: bot.id, user_id: userId, sig, key, title: SECTION_TITLES[key], status: "done", output: prev.output, lines: prev.output.split("\n").length } as any);
+        return { text: prev.output as string, tokens: 0 };
+      }
+      const { data: row } = await db.from("bot_subtasks").insert({ job_id: ctx.jobId, bot_id: bot.id, user_id: userId, sig, key, title: SECTION_TITLES[key], status: "running", attempts: 1 } as any).select("id").single();
+      const id = row?.id;
+      const r = await generate([{ role: "system", content: sys }, { role: "user", content: userText }], async (lines) => {
+        const { data: j } = await db.from("bot_jobs").select("status").eq("id", ctx.jobId).maybeSingle();
+        if (j?.status === "cancelled") { await db.from("bot_subtasks").update({ status: "cancelled" }).eq("id", id); throw new Error("JOB_CANCELLED"); }
+        const t = new Date().toISOString();
+        await Promise.all([
+          db.from("bot_subtasks").update({ lines, heartbeat_at: t }).eq("id", id),
+          db.from("bot_jobs").update({ heartbeat_at: t, updated_at: t }).eq("id", ctx.jobId),
+        ]);
+      });
+      if (!r.reply) {
+        await db.from("bot_subtasks").update({ status: "failed", error: "AI উত্তর দেয়নি" }).eq("id", id);
+        throw new Error(`${SECTION_TITLES[key]} অংশে AI উত্তর দেয়নি — আবার চেষ্টা করুন (শেষ হওয়া অংশগুলো আর লিখতে হবে না, কোনো কয়েন কাটেনি)।`);
+      }
+      await db.from("bot_subtasks").update({ status: "done", output: r.reply, tokens: r.tokens, lines: r.reply.split("\n").length }).eq("id", id);
+      return { text: r.reply, tokens: r.tokens };
+    };
+    const failSection = async (key: string, msg: string) => {
+      await db.from("bot_subtasks").update({ status: "failed", error: msg }).eq("job_id", ctx.jobId).eq("key", key);
+      // Don't reuse a broken section on retry.
+      await db.from("bot_subtasks").update({ status: "failed" }).eq("bot_id", bot.id).eq("sig", sig).eq("key", key);
+      throw new Error(msg);
+    };
+    await emit?.("সাব-এজেন্ট: Core অংশ লেখা হচ্ছে…");
+    const coreR = await sub("core", `${corePrompt()}\n${R}${brain}`);
+    const core = parseCore(coreR.text);
+    if (!core.app || core.unclosed) await failSection("core", "Core অংশ সম্পূর্ণ হয়নি — আবার চেষ্টা করুন (কোনো কয়েন কাটেনি)।");
+    await emit?.("সাব-এজেন্ট: User ও Admin অংশ একসাথে লেখা হচ্ছে…");
+    const [userR, adminR] = await Promise.all([sub("user", `${sectionPrompt("user", core.app)}\n${R}`), sub("admin", `${sectionPrompt("admin", core.app)}\n${R}`)]);
+    const user = parseSection(userR.text), admin = parseSection(adminR.text);
+    if (!user) await failSection("user", "User অংশ পড়া যায়নি — আবার চেষ্টা করুন, বাকি অংশ রাখা আছে (কোনো কয়েন কাটেনি)।");
+    if (!admin) await failSection("admin", "Admin অংশ পড়া যায়নি — আবার চেষ্টা করুন, বাকি অংশ রাখা আছে (কোনো কয়েন কাটেনি)।");
+    await emit?.("Integrator: অংশগুলো একটি app.py-তে জোড়া লাগানো হচ্ছে…");
+    const app = mergeSections(core.app, admin!, user!);
+    const rest = core.others.map((f) => `=== FILE: ${f.path} ===\n${f.content}\n=== END FILE ===`).join("\n");
+    const reply = `=== SUMMARY ===\n${core.summary || "বট তৈরি হয়েছে (সাব-এজেন্ট দিয়ে সমান্তরালভাবে)।"}\n=== END SUMMARY ===\n=== FILE: app.py ===\n${app}\n=== END FILE ===\n${rest}`;
+    return { reply, tokens: coreR.tokens + userR.tokens + adminR.tokens, finish: "stop", lastProviderStatus: 200 };
+  };
+  const { shouldSplit } = await import("@/lib/sub-agents");
+  const useSplit = data.mode === "build" && !!ctx.jobId && shouldSplit(data.prompt, isFix);
+  let { reply, tokens, finish, lastProviderStatus } = useSplit ? await runSplit() : await generate(messages);
   if (!reply) {
     await db.from("bot_brain").insert({ source: "system", error_signature: "AI_PROVIDER_NO_RESPONSE", symptom: "Bot plan/build/fix request received no provider response", root_cause: "All configured AI providers failed or timed out", fix_summary: "Check provider health and retry; no bot files were changed" } as any);
     return { error: lastProviderStatus === 429 ? "AI এখন ব্যস্ত। একটু অপেক্ষা করে আবার চেষ্টা করুন—কোনো ফাইল বদলায়নি।" : "AI সংযোগ সাময়িকভাবে বন্ধ হয়েছে। আবার চেষ্টা করুন—কোনো ফাইল বা কয়েন বদলায়নি।" };
@@ -355,7 +409,7 @@ export async function processBotJob(jobId: string) {
     void db.from("bot_jobs").update({ heartbeat_at: now() }).eq("id", jobId).eq("status", "running").then(() => {});
   }, 30_000);
   try {
-    const r: any = await runBotChat(db, job.user_id, job.input as BotChatData, emit);
+    const r: any = await runBotChat(db, job.user_id, job.input as BotChatData, emit, { jobId });
     if (r?.cancelled) await db.from("bot_jobs").update({ status: "cancelled", updated_at: now() }).eq("id", jobId);
     else if (r?.error) await db.from("bot_jobs").update({ status: "failed", error: String(r.error), updated_at: now() }).eq("id", jobId);
     else await db.from("bot_jobs").update({ status: "done", result: { coins: r?.coins ?? 0, ms: r?.ms ?? 0, imageNotice: r?.imageNotice ?? "", questions: r?.questions ?? [], prompt: (job.input as BotChatData)?.prompt ?? "" }, updated_at: now() }).eq("id", jobId);

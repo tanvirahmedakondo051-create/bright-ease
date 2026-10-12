@@ -39,7 +39,7 @@ const SECTION_FORMAT = `OUTPUT FORMAT — plain text, no markdown fences:
 
 export function corePrompt() {
   return `You are the CORE sub-agent of a parallel team building ONE Telegram bot. Other agents will write the user flow and the admin panel IN PARALLEL using ONLY what you define, so be explicit.
-Write the TOP of app.py: imports (import everything any handler may need from telegram and telegram.ext), logging, BOT_TOKEN = os.environ["BOT_TOKEN"], ADMIN_ID = int(os.environ["ADMIN_ID"]), BUTTON_EMOJIS/TEXT_EMOJIS/BUTTON_STYLES, emoji+keyboard helpers (ik_btn, rk_btn, pe, etc.), data.json load/save helpers and default data shape, is_admin guard, shared formatting helpers.
+Write the TOP of app.py: imports (MUST include: from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup and from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters — plus anything else handlers may need), logging, BOT_TOKEN = os.environ["BOT_TOKEN"], ADMIN_ID = int(os.environ["ADMIN_ID"]), BUTTON_EMOJIS/TEXT_EMOJIS/BUTTON_STYLES, emoji+keyboard helpers (ik_btn, rk_btn, pe, etc.), data.json load/save helpers and default data shape, is_admin guard, shared formatting helpers.
 Do NOT write handlers, do NOT write register_handlers, main() or run_polling — those are added by the integrator.
 End app.py with a comment block:
 # === CONTRACT ===

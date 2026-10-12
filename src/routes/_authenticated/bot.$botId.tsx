@@ -9,7 +9,7 @@ import { AlertTriangle, ArrowUp, Bot, FileCode2, FolderOpen, Hammer, Image as Im
 import { readAttachments, type Attachment } from "@/lib/attachments";
 import { zipSync, strToU8 } from "fflate";
 import { supabase } from "@/integrations/supabase/client";
-import { botChat, botStatus, createBot, listVersions, renameBot, restoreVersion, saveBotSecrets, startBotBuild, startTempHost, stopTempHost } from "@/lib/bot.functions";
+import { botStatus, createBot, listVersions, renameBot, restoreVersion, saveBotSecrets, startBotBuild, startTempHost, stopTempHost } from "@/lib/bot.functions";
 import { activeBotJob, botJobStatus, cancelBotBuild } from "@/lib/jobs.functions";
 import { RichText } from "@/components/app/ChatParts";
 import { BotQuestionDialog, type BotQuestion, type BotQuestionAnswer } from "@/components/app/BotQuestionDialog";

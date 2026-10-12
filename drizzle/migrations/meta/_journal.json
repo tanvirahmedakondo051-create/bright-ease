@@ -64,6 +64,13 @@
       "when": 1791771744143,
       "tag": "0008_bot_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791788746225,
+      "tag": "0009_reset_leftover_type",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+drop type if exists public.app_role cascade;

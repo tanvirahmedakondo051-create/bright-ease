@@ -309,3 +309,12 @@ export const adminListBotBrain = createServerFn({ method: "GET" })
     const { data } = await db.from("bot_brain").select("id, source, kind, bot_type, quality, error_signature, symptom, fix_summary, code_snippet, use_count, created_at").order("created_at", { ascending: false }).limit(500);
     return data ?? [];
   });
+
+export const adminDeleteBrain = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const db = await adminDb(context);
+    await db.from("bot_brain").delete().eq("id", data.id);
+    return { ok: true };
+  });

@@ -71,6 +71,13 @@
       "when": 1791788746225,
       "tag": "0009_reset_leftover_type",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791788826071,
+      "tag": "0010_restore_roles_and_admin_policies",
+      "breakpoints": true
     }
   ]
 }

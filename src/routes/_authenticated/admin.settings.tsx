@@ -9,6 +9,7 @@ import { PageTitle, Panel } from "@/components/admin/ui";
 import { Field, Toggle, inputCls } from "@/components/admin/fields";
 import { Button } from "@/components/ui/button";
 import { ImportEmojis } from "@/components/admin/ImportEmojis";
+import { BulkEmojiPaste } from "@/components/admin/BulkEmojiPaste";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   head: () => ({ meta: [{ title: "Bot platform settings — Hexa AI" }, { name: "robots", content: "noindex" }] }),
@@ -129,6 +130,7 @@ function EmojiLibrary({ rows, setRows, onSave }: { rows: EmojiRow[]; setRows: (r
   return (
     <Panel title={`Premium emoji library (${rows.length})`}>
       <p className="mb-4 text-sm text-muted-foreground">একটা একটা করে premium emoji ID যোগ করুন, অথবা নিচে কোনো বটের ফাইল দিয়ে সব ID একসাথে সংগ্রহ করুন। পরের বিল্ডগুলোতে AI এই ID গুলো ব্যবহার করবে। key "text." দিয়ে শুরু হলে মেসেজের ভিতরের emoji।</p>
+      <BulkEmojiPaste onAdd={(items) => { const keys = new Set(items.map((i) => i.key)); const next = [...items, ...rows.filter((r) => !keys.has(r.key))]; setRows(next); onSave(next); }} />
       <ImportEmojis rows={rows} onAdd={(found) => { const next = [...found, ...rows]; setRows(next); onSave(next); }} />
       <form className="mb-5 grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-[1.2fr_1.2fr_70px_1fr_auto]" onSubmit={(e) => { e.preventDefault(); const key = draft.key.trim().toLowerCase(); if (!key || !/^\d{5,30}$/.test(draft.id.trim())) return toast.error("Key ও সঠিক emoji ID দিন"); const next = [{ ...draft, key, id: draft.id.trim(), kind: key.startsWith("text.") ? "text" as const : "button" as const }, ...rows.filter((r) => r.key !== key)]; setRows(next); onSave(next); setDraft(blank); }}>
         <input aria-label="New key" className={`${inputCls} font-en`} value={draft.key} onChange={(e) => setDraft({ ...draft, key: e.target.value })} placeholder="main.shop" />

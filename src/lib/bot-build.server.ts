@@ -112,13 +112,23 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
       ? `You are a senior Python Telegram bot engineer UPGRADING an existing bot. You receive the full current files. Apply ONLY the user's requested change or fix. Keep every existing feature, function, command, handler, callback_data, button, text and setting exactly as it is unless the user asked to change it. Return the COMPLETE new app.py — never partial, never placeholders like "# ... rest unchanged". Include requirements.txt/README.md only if they must change.\n${R}${brain}\n${FILE_FORMAT}\nAfter the files also add:\n=== CHANGES ===\none short Bangla line per changed section\n=== END CHANGES ===\n=== BRAIN ===\n{"error_signature":"short key","symptom":"short","root_cause":"short","fix_summary":"short"}\n=== END BRAIN ===${fileCtx}`
       : `You are a senior Python Telegram bot engineer. Build a production-quality bot.\n${R}${brain}\n${FILE_FORMAT}\nReturn app.py, requirements.txt and README.md.${fileCtx}`;
   const userText = data.prompt + answered + attText + (data.errorLog ? `\n\nThe bot crashed with this log, fix it:\n${data.errorLog}` : "");
-  const images = (data.attachments ?? []).filter((a) => a.kind === "image");
+  const atts = data.attachments ?? [];
+  const images = [
+    ...atts.filter((a) => a.kind === "image").map((a) => a.content),
+    ...atts.filter((a) => a.kind === "video").flatMap((a) => { try { return JSON.parse(a.content) as string[]; } catch { return []; } }),
+  ];
+  const pdfs = atts.filter((a) => a.kind === "pdf");
+  const videoNote = atts.filter((a) => a.kind === "video").map((a) => `\nVIDEO ${a.name}: still frames from this video are attached as pictures, in order.`).join("");
+  const parts: any[] = [
+    ...images.map((url) => ({ type: "image_url", image_url: { url } })),
+    ...pdfs.map((a) => ({ type: "file", file: { filename: a.name, file_data: a.content } })),
+  ];
   const messages: { role: string; content: any }[] = [
     { role: "system", content: system },
     ...history.slice(-6).map((m) => ({ role: m.role, content: (m.plan ? JSON.stringify(m.plan) : m.content).slice(0, 3000) })),
-    { role: "user", content: images.length ? [{ type: "text", text: userText + `\n\nREFERENCE PICTURES: inspect every visible button, label, layout and emoji. Match each visible button/text emoji by meaning to the closest supplied BUTTON_EMOJIS/TEXT_EMOJIS library ID and apply it in the same corresponding place. If numeric IDs are included in my text/files, use those exact IDs. A picture itself does not expose Telegram's numeric custom-emoji ID: if any requested visible emoji has no confident library match, return ONLY JSON {"questions":[{"q":"ছবির এই emoji-টির Premium ID/লাইব্রেরি key দিন: …","options":["ID লিখব","সাধারণ emoji রাখুন"]}]} before writing code. Never guess an ID and never silently premium-style only some places.` }, ...images.map((a) => ({ type: "image_url", image_url: { url: a.content } }))] : userText },
+    { role: "user", content: parts.length ? [{ type: "text", text: userText + videoNote + (pdfs.length ? `\n\nATTACHED PDF DOCUMENTS: ${pdfs.map((p) => p.name).join(", ")} — read them fully.` : "") + (images.length ? `\n\nREFERENCE PICTURES: inspect every visible button, label, layout and emoji. Match each visible button/text emoji by meaning to the closest supplied BUTTON_EMOJIS/TEXT_EMOJIS library ID and apply it in the same corresponding place. If numeric IDs are included in my text/files, use those exact IDs. A picture itself does not expose Telegram's numeric custom-emoji ID: if any requested visible emoji has no confident library match, return ONLY JSON {"questions":[{"q":"ছবির এই emoji-টির Premium ID/লাইব্রেরি key দিন: …","options":["ID লিখব","সাধারণ emoji রাখুন"]}]} before writing code. Never guess an ID and never silently premium-style only some places.` : "") }, ...parts] : userText },
   ];
-  let imagesOn = images.length > 0;
+  let imagesOn = parts.length > 0;
   let imageNotice = "";
   const plain = (ms: { role: string; content: any }[]) => imagesOn ? ms : ms.map((m) => Array.isArray(m.content) ? { ...m, content: m.content.filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n") } : m);
 
@@ -146,7 +156,7 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
             const detail = (await r.text()).slice(0, 300);
             console.error("bot ai", r.status, detail);
             if (r.status === 400 && sendMax && /max_tokens|max_output|maximum/i.test(detail)) { sendMax = false; attempt--; continue; }
-            if (r.status === 400 && imagesOn) { imagesOn = false; imageNotice = "এই AI মডেল ছবি পড়তে পারে না — শুধু লেখা ও ফাইল পাঠানো হয়েছে।"; messages = plain(messagesIn); attempt--; continue; }
+            if (r.status === 400 && imagesOn) { imagesOn = false; imageNotice = "এই AI মডেল ছবি/ভিডিও/PDF পড়তে পারে না — শুধু লেখা ও টেক্সট ফাইল পাঠানো হয়েছে।"; messages = plain(messagesIn); attempt--; continue; }
             const transient = r.status === 429 || r.status >= 500;
             if (transient && attempt < 2) continue;
             break;

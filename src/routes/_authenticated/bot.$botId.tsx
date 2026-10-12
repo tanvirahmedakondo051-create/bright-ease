@@ -343,8 +343,8 @@ function Studio() {
                 {mode === "build" && isFixNext && <span className="rounded-full bg-success/15 px-2 py-0.5 text-success">Upgrade — পুরনো ফিচার রক্ষা করে</span>}
                 <span className="ml-auto"><StatusChip st={st} starting={starting} /></span>
               </div>
-              {!!attachments.length && <div className="mb-2 flex flex-wrap gap-1.5">{attachments.map((a, i) => <span key={i} className="flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs">{a.kind === "image" ? <ImageIcon className="size-3" /> : <FileCode2 className="size-3" />}<span className="max-w-[140px] truncate">{a.name}</span><button aria-label="সরান" onClick={() => setAttachments(attachments.filter((_, j) => j !== i))}><X className="size-3" /></button></span>)}</div>}
-              <input ref={fileRef} type="file" multiple hidden accept=".py,.txt,.json,.md,image/png,image/jpeg,image/webp" onChange={async (e) => {
+              {!!attachments.length && <div className="mb-2 flex flex-wrap items-center gap-1.5">{attachments.map((a, i) => <span key={i} className="flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs">{a.kind === "image" ? <ImageIcon className="size-3" /> : a.kind === "video" ? <Video className="size-3" /> : a.kind === "pdf" ? <FileText className="size-3" /> : <FileCode2 className="size-3" />}<span className="max-w-[140px] truncate">{a.name}</span><button aria-label="সরান" onClick={() => setAttachments(attachments.filter((_, j) => j !== i))}><X className="size-3" /></button></span>)}<span className="text-xs text-muted-foreground">১০টির মধ্যে {attachments.length.toLocaleString("bn-BD")}</span></div>}
+              <input ref={fileRef} type="file" multiple hidden accept="image/*,video/*,.pdf,.zip,.py,.txt,.json,.md,.csv,.html,.css,.js,.ts,.yaml,.yml,.toml,.env,.log,.xml,.sql,.sh,*/*" onChange={async (e) => {
                 const picked = Array.from(e.currentTarget.files ?? []);
                 e.currentTarget.value = "";
                 if (!picked.length) return;

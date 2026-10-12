@@ -367,6 +367,7 @@ export const botChat = createServerFn({ method: "POST" })
 
 const buildInput = z.object({
   botId: z.string().uuid(),
+  mode: z.enum(["chat", "plan", "build"]).default("build"),
   prompt: z.string().min(1).max(60000),
   errorLog: z.string().max(60000).optional(),
   questionAnswers: z.array(z.object({ question: z.string().max(4000), answer: z.string().max(20000) })).max(20).optional(),
@@ -379,15 +380,15 @@ const buildInput = z.object({
 // build finishes even with the screen off or the app closed. Coins are charged only on save.
 export const startBotBuild = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { botId: string; prompt: string; errorLog?: string; questionAnswers?: BotAnswer[]; attachments?: { name: string; kind: "text" | "image"; content: string }[] }) => buildInput.parse(d))
+  .inputValidator((d: { botId: string; prompt: string; mode?: "chat" | "plan" | "build"; errorLog?: string; questionAnswers?: BotAnswer[]; attachments?: { name: string; kind: "text" | "image"; content: string }[] }) => buildInput.parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
     const bot = await loadOwned(db, context.userId, data.botId);
-    if (!bot.token_enc || !bot.admin_id) return { error: "NEED_SECRETS" };
-    // One active build per bot.
+    if (data.mode === "build" && (!bot.token_enc || !bot.admin_id)) return { error: "NEED_SECRETS" };
+    // One active job per bot (Chat/Plan also run as jobs so a dropped connection never loses the answer).
     const { data: existing } = await db.from("bot_jobs").select("id, created_at").eq("bot_id", data.botId).in("status", ["queued", "running"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (existing) return { ok: true, jobId: existing.id as string, createdAt: existing.created_at as string };
-    const input = { ...data, mode: "build" as const };
+    const input = { ...data };
     const { data: job, error } = await db.from("bot_jobs").insert({ bot_id: data.botId, user_id: context.userId, status: "queued", input } as any).select("id, created_at").single();
     if (error || !job) return { error: "বিল্ড শুরু করা যায়নি — আবার চেষ্টা করুন" };
     // The database starts the build in its own server request (pg_net), so it keeps running

@@ -9,7 +9,7 @@ import { AlertTriangle, ArrowUp, Bot, FileCode2, FolderOpen, Hammer, Image as Im
 import { readAttachments, type Attachment } from "@/lib/attachments";
 import { zipSync, strToU8 } from "fflate";
 import { supabase } from "@/integrations/supabase/client";
-import { botChat, botStatus, createBot, listVersions, renameBot, restoreVersion, saveBotSecrets, startBotBuild, startTempHost, stopTempHost } from "@/lib/bot.functions";
+import { botStatus, createBot, listVersions, renameBot, restoreVersion, saveBotSecrets, startBotBuild, startTempHost, stopTempHost } from "@/lib/bot.functions";
 import { activeBotJob, botJobStatus, cancelBotBuild } from "@/lib/jobs.functions";
 import { RichText } from "@/components/app/ChatParts";
 import { BotQuestionDialog, type BotQuestion, type BotQuestionAnswer } from "@/components/app/BotQuestionDialog";
@@ -36,7 +36,6 @@ function Studio() {
   const { botId } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const chat = useServerFn(botChat);
   const statusFn = useServerFn(botStatus);
   const startBuildFn = useServerFn(startBotBuild);
   const jobStatusFn = useServerFn(botJobStatus);
@@ -107,7 +106,7 @@ function Studio() {
     while (id === runId.current) {
       await new Promise((r) => setTimeout(r, 3000));
       let j: any;
-      try { j = await jobStatusFn({ data: { jobId, after: seen } }); } catch { continue; }
+      try { j = await jobStatusFn({ data: { jobId, after: seen } }); } catch { setJobStep("সংযোগ ফিরছে…"); continue; }
       if (id !== runId.current) return;
       seen = j.total ?? seen;
       const lastEvent = j.events?.[j.events.length - 1];
@@ -117,10 +116,11 @@ function Studio() {
         if (j.result?.imageNotice) toast.info(j.result.imageNotice);
         if (j.result?.questions?.length) {
           setQuestionPrompt(j.result.prompt || "সংযুক্ত ছবির emoji অনুযায়ী কাজ করুন");
-          setQuestionMode("build");
+          setQuestionMode(j.result.mode ?? "build");
           setQuestions(j.result.questions);
         }
         await refresh();
+        if (j.result?.needsBuildFix) setFixOffer({ brief: j.result.fixBrief || "", log: j.result.prompt || "" });
         return;
       }
       if (j.status === "failed") { setRequestError(j.error || "বিল্ড ব্যর্থ হয়েছে"); toast.error(j.error || "বিল্ড ব্যর্থ হয়েছে"); return; }
@@ -157,23 +157,15 @@ function Studio() {
     setAttachments([]);
     const extra = att.length ? { attachments: att } : {};
     try {
-      if (selectedMode === "build") {
-        // Start the background job, then just watch it — the answer arrives via polling.
-        const r: any = await startBuildFn({ data: { botId, prompt: text, questionAnswers: answers, ...extra } });
+      {
+        // Every mode runs as a background job; the phone only watches it, so a dropped
+        // connection or locked screen never loses the answer.
+        const r: any = await startBuildFn({ data: { botId, prompt: text, mode: selectedMode, questionAnswers: answers, ...extra } });
         if (id !== runId.current) return;
         if (r?.error === "NEED_SECRETS") { needSecrets(() => send(text, "build", answers)); return; }
         if (r?.error === "COINS_OUT") { toast.error("কয়েন শেষ! কাল আবার পাবেন বা আপগ্রেড করুন"); return; }
         if (r?.error) { setRequestError(r.error); toast.error(r.error); return; }
         if (r?.jobId) await watchJob(r.jobId, id);
-      } else {
-        const r: any = await chat({ data: { botId, prompt: text, mode: selectedMode, questionAnswers: answers, ...extra } });
-        if (r?.imageNotice) toast.info(r.imageNotice);
-        if (id !== runId.current) return;
-        if (r.cancelled) return;
-        if (r.error === "COINS_OUT") toast.error("কয়েন শেষ! কাল আবার পাবেন বা আপগ্রেড করুন");
-        else if (r.error) { setRequestError(r.error); toast.error(r.error); }
-        else if (r.questions?.length) { setQuestionPrompt(text); setQuestionMode(selectedMode); setQuestions(r.questions); }
-        else { await refresh(); if (r.needsBuildFix) setFixOffer({ brief: r.fixBrief || "", log: text }); }
       }
     } catch (error) {
       if (id === runId.current) {

@@ -306,6 +306,6 @@ export const adminListBotBrain = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const db = await adminDb(context);
-    const { data } = await db.from("bot_brain").select("id, source, error_signature, symptom, fix_summary, code_snippet, use_count, created_at").order("created_at", { ascending: false }).limit(500);
+    const { data } = await db.from("bot_brain").select("id, source, kind, bot_type, quality, error_signature, symptom, fix_summary, code_snippet, use_count, created_at").order("created_at", { ascending: false }).limit(500);
     return data ?? [];
   });

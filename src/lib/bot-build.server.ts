@@ -450,10 +450,11 @@ export async function processBotJob(jobId: string) {
     const r: any = await runBotChat(db, job.user_id, job.input as BotChatData, emit, { jobId });
     if (r?.cancelled) await db.from("bot_jobs").update({ status: "cancelled", updated_at: now() }).eq("id", jobId);
     else if (r?.error) await db.from("bot_jobs").update({ status: "failed", error: String(r.error), updated_at: now() }).eq("id", jobId);
-    else await db.from("bot_jobs").update({ status: "done", result: { coins: r?.coins ?? 0, ms: r?.ms ?? 0, imageNotice: r?.imageNotice ?? "", questions: r?.questions ?? [], prompt: (job.input as BotChatData)?.prompt ?? "" }, updated_at: now() }).eq("id", jobId);
+    else await db.from("bot_jobs").update({ status: "done", result: { coins: r?.coins ?? 0, ms: r?.ms ?? 0, imageNotice: r?.imageNotice ?? "", questions: r?.questions ?? [], prompt: (job.input as BotChatData)?.prompt ?? "", mode: (job.input as BotChatData)?.mode ?? "build", needsBuildFix: !!r?.needsBuildFix, fixBrief: r?.fixBrief ?? "" }, updated_at: now() }).eq("id", jobId);
     return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "সার্ভারে সমস্যা হয়েছে";
+    console.error("bot job", (job.input as BotChatData)?.mode, msg);
     if (msg === "JOB_CANCELLED") await db.from("bot_jobs").update({ status: "cancelled", updated_at: now() }).eq("id", jobId);
     else await db.from("bot_jobs").update({ status: "failed", error: msg.slice(0, 500), updated_at: now() }).eq("id", jobId);
     return { ok: false, error: msg };

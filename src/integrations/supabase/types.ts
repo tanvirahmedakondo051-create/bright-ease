@@ -1549,8 +1549,13 @@ export type Database = {
         Args: { _events: Json; _id: string; _status: string }
         Returns: string
       }
+      kick_bot_job: {
+        Args: { _id: string; _origin: string }
+        Returns: undefined
+      }
       kick_job: { Args: { _id: string }; Returns: undefined }
       rescue_jobs: { Args: never; Returns: number }
+      sweep_bot_jobs: { Args: { _origin: string }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "user"

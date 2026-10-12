@@ -28,6 +28,7 @@ import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedBotBotIdRouteImport } from './routes/_authenticated/bot.$botId'
 import { Route as ApiPublicAurapayWebhookRouteImport } from './routes/api/public/aurapay-webhook'
+import { Route as ApiPublicBotJobRunRouteImport } from './routes/api/public/bot-job-run'
 import { Route as ApiPublicGenerateRouteImport } from './routes/api/public/generate'
 import { Route as ApiPublicJobStatusRouteImport } from './routes/api/public/job-status'
 import { Route as AuthenticatedAdminPlansIndexRouteImport } from './routes/_authenticated/admin.plans.index'
@@ -134,6 +135,11 @@ const ApiPublicAurapayWebhookRoute = ApiPublicAurapayWebhookRouteImport.update({
   path: '/api/public/aurapay-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBotJobRunRoute = ApiPublicBotJobRunRouteImport.update({
+  id: '/api/public/bot-job-run',
+  path: '/api/public/bot-job-run',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicGenerateRoute = ApiPublicGenerateRouteImport.update({
   id: '/api/public/generate',
   path: '/api/public/generate',
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/bot/$botId': typeof AuthenticatedBotBotIdRoute
   '/api/public/aurapay-webhook': typeof ApiPublicAurapayWebhookRoute
+  '/api/public/bot-job-run': typeof ApiPublicBotJobRunRoute
   '/api/public/generate': typeof ApiPublicGenerateRoute
   '/api/public/job-status': typeof ApiPublicJobStatusRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/bot/$botId': typeof AuthenticatedBotBotIdRoute
   '/api/public/aurapay-webhook': typeof ApiPublicAurapayWebhookRoute
+  '/api/public/bot-job-run': typeof ApiPublicBotJobRunRoute
   '/api/public/generate': typeof ApiPublicGenerateRoute
   '/api/public/job-status': typeof ApiPublicJobStatusRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -239,6 +247,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/bot/$botId': typeof AuthenticatedBotBotIdRoute
   '/api/public/aurapay-webhook': typeof ApiPublicAurapayWebhookRoute
+  '/api/public/bot-job-run': typeof ApiPublicBotJobRunRoute
   '/api/public/generate': typeof ApiPublicGenerateRoute
   '/api/public/job-status': typeof ApiPublicJobStatusRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -267,6 +276,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/bot/$botId'
     | '/api/public/aurapay-webhook'
+    | '/api/public/bot-job-run'
     | '/api/public/generate'
     | '/api/public/job-status'
     | '/admin/'
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/bot/$botId'
     | '/api/public/aurapay-webhook'
+    | '/api/public/bot-job-run'
     | '/api/public/generate'
     | '/api/public/job-status'
     | '/admin'
@@ -319,6 +330,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/users'
     | '/_authenticated/bot/$botId'
     | '/api/public/aurapay-webhook'
+    | '/api/public/bot-job-run'
     | '/api/public/generate'
     | '/api/public/job-status'
     | '/_authenticated/admin/'
@@ -337,6 +349,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   PaymentSuccessRoute: typeof PaymentSuccessRoute
   ApiPublicAurapayWebhookRoute: typeof ApiPublicAurapayWebhookRoute
+  ApiPublicBotJobRunRoute: typeof ApiPublicBotJobRunRoute
   ApiPublicGenerateRoute: typeof ApiPublicGenerateRoute
   ApiPublicJobStatusRoute: typeof ApiPublicJobStatusRoute
   ApiPublicCronExpiryRoute: typeof ApiPublicCronExpiryRoute
@@ -478,6 +491,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAurapayWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/bot-job-run': {
+      id: '/api/public/bot-job-run'
+      path: '/api/public/bot-job-run'
+      fullPath: '/api/public/bot-job-run'
+      preLoaderRoute: typeof ApiPublicBotJobRunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/generate': {
       id: '/api/public/generate'
       path: '/api/public/generate'
@@ -576,6 +596,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   PaymentSuccessRoute: PaymentSuccessRoute,
   ApiPublicAurapayWebhookRoute: ApiPublicAurapayWebhookRoute,
+  ApiPublicBotJobRunRoute: ApiPublicBotJobRunRoute,
   ApiPublicGenerateRoute: ApiPublicGenerateRoute,
   ApiPublicJobStatusRoute: ApiPublicJobStatusRoute,
   ApiPublicCronExpiryRoute: ApiPublicCronExpiryRoute,

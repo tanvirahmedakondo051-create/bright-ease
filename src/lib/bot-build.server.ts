@@ -120,7 +120,7 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
   let imageNotice = "";
   const plain = (ms: { role: string; content: any }[]) => imagesOn ? ms : ms.map((m) => Array.isArray(m.content) ? { ...m, content: m.content.filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n") } : m);
 
-  const callAI = async (messagesIn: { role: string; content: any }[]) => {
+  const callAI = async (messagesIn: { role: string; content: any }[], prefix = "") => {
     let messages = plain(messagesIn);
     let reply = "", tokens = 0, finish = "";
     let lastProviderStatus = 0;
@@ -170,8 +170,14 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
             };
             // Stall guard: if the stream sends no bytes for 4 minutes the connection is dead
             // even though it never closed — fail so the job can retry or end with an error.
-            const stall = () => new Promise<never>((_, reject) => { const t = setTimeout(() => reject(new Error("AI স্ট্রিম ৪ মিনিট চুপ — সংযোগ ঝুলে গেছে")), 4 * 60_000); (stall as any).t = t; });
+            const stall = () => new Promise<never>((_, reject) => { const t = setTimeout(() => reject(new Error("সার্ভারের সাড়া নেই — AI অনেকক্ষণ কিছু লেখেনি")), reply ? 90_000 : 180_000); (stall as any).t = t; });
+            let lastP = Date.now();
             for (;;) {
+              if (data.mode === "build" && emit && Date.now() - lastP > 15_000) {
+                lastP = Date.now();
+                const lines = (prefix + reply).split("\n").length;
+                await emit(`AI কোড লিখছে… ${lines} লাইন লেখা হয়েছে`);
+              }
               const s = stall();
               const { done, value } = await Promise.race([reader.read(), s]).finally(() => clearTimeout((stall as any).t));
               if (done) break;
@@ -200,7 +206,7 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
     let text = r.reply;
     for (let i = 0; i < 3 && (/length|max_tokens/i.test(r.finish) || hasUnclosedBlock(text)); i++) {
       await emit?.("উত্তর লম্বা — বাকি অংশ আনা হচ্ছে…");
-      const c = await callAI([...msgs, { role: "assistant", content: text }, { role: "user", content: "Your reply was cut off. Continue EXACTLY where you stopped, starting with the very next character. Do not repeat earlier text, no preface, keep the same === FILE === format." }]);
+      const c = await callAI([...msgs, { role: "assistant", content: text }, { role: "user", content: "Your reply was cut off. Continue EXACTLY where you stopped, starting with the very next character. Do not repeat earlier text, no preface, keep the same === FILE === format." }], text);
       if (!c.reply) break;
       text += c.reply; extraTokens += c.tokens; r = { ...c, reply: text, tokens: r.tokens };
     }

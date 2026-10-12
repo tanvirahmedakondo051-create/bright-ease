@@ -31,3 +31,8 @@ export function truncationProblems(newSrc: string, oldSrc?: string): string[] {
   if (/#\s*\.\.\.|rest of (the )?(code|file)|unchanged\s*\.\.\.|\.\.\.\s*existing code/i.test(newSrc)) p.push("contains placeholder comments instead of real code");
   return p;
 }
+
+/** Premium mode guard: the old bot used premium icons and the new one dropped all of them. */
+export function premiumLost(oldSrc: string, newSrc: string) {
+  return /icon_custom_emoji_id/.test(oldSrc) && !/icon_custom_emoji_id/.test(newSrc);
+}

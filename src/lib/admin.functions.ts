@@ -253,7 +253,7 @@ export const adminAddCoins = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const EmojiMap = z.record(z.string().regex(/^[a-z0-9_.-]{2,60}$/), z.string().regex(/^\d{0,30}$/)).refine((map) => Object.keys(map).length <= 300);
+const EmojiMap = z.record(z.string().regex(/^[a-z0-9_.-]{2,60}$/), z.string().regex(/^\d{0,30}$/)).refine((map) => Object.keys(map).length <= 1500);
 const EmojiMetaMap = z.record(z.string(), z.object({ kind: z.enum(["button", "text"]), style: z.enum(["", "primary", "success", "danger"]), fallback: z.string().max(16), label: z.string().max(80) })).optional();
 
 export const adminGetBotSettings = createServerFn({ method: "GET" })
@@ -306,6 +306,15 @@ export const adminListBotBrain = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const db = await adminDb(context);
-    const { data } = await db.from("bot_brain").select("id, source, error_signature, symptom, fix_summary, code_snippet, use_count, created_at").order("created_at", { ascending: false }).limit(500);
+    const { data } = await db.from("bot_brain").select("id, source, kind, bot_type, quality, error_signature, symptom, fix_summary, code_snippet, use_count, created_at").order("created_at", { ascending: false }).limit(500);
     return data ?? [];
+  });
+
+export const adminDeleteBrain = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const db = await adminDb(context);
+    await db.from("bot_brain").delete().eq("id", data.id);
+    return { ok: true };
   });

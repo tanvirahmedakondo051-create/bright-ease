@@ -223,33 +223,45 @@ export type Database = {
       }
       bot_brain: {
         Row: {
+          bot_type: string | null
           code_snippet: string | null
           created_at: string
           error_signature: string | null
           fix_summary: string | null
           id: string
+          kind: string
+          pattern: Json | null
+          quality: number | null
           root_cause: string | null
           source: string
           symptom: string | null
           use_count: number
         }
         Insert: {
+          bot_type?: string | null
           code_snippet?: string | null
           created_at?: string
           error_signature?: string | null
           fix_summary?: string | null
           id?: string
+          kind?: string
+          pattern?: Json | null
+          quality?: number | null
           root_cause?: string | null
           source?: string
           symptom?: string | null
           use_count?: number
         }
         Update: {
+          bot_type?: string | null
           code_snippet?: string | null
           created_at?: string
           error_signature?: string | null
           fix_summary?: string | null
           id?: string
+          kind?: string
+          pattern?: Json | null
+          quality?: number | null
           root_cause?: string | null
           source?: string
           symptom?: string | null
@@ -446,6 +458,8 @@ export type Database = {
           last_log: string | null
           messages: Json
           name: string
+          pending_answers: Json | null
+          pending_questions: Json | null
           run_mode: string | null
           status: string
           temp_expires_at: string | null
@@ -470,6 +484,8 @@ export type Database = {
           last_log?: string | null
           messages?: Json
           name?: string
+          pending_answers?: Json | null
+          pending_questions?: Json | null
           run_mode?: string | null
           status?: string
           temp_expires_at?: string | null
@@ -494,6 +510,8 @@ export type Database = {
           last_log?: string | null
           messages?: Json
           name?: string
+          pending_answers?: Json | null
+          pending_questions?: Json | null
           run_mode?: string | null
           status?: string
           temp_expires_at?: string | null

@@ -83,12 +83,19 @@ export async function mergeButtonEmojis(db: any, code: string, current: Record<s
   if (Object.keys(merged).length !== Object.keys(current).length) await db.from("site_settings").update({ button_emojis: merged }).eq("id", 1);
 }
 
+export const DEFAULT_STYLES: Record<string, string> = { "main.": "primary", "admin.": "primary", "action.next": "primary", "action.approve": "success", "action.confirm": "success", "action.add": "success", "action.yes": "success", "action.reject": "danger", "action.cancel": "danger", "action.back": "danger", "action.delete": "danger", "action.no": "danger" };
+
+/** Normal emoji mode: same helpers and colours, but no premium icons anywhere. */
+export const NORMAL_MODE_RULE = `- EMOJI_MODE = "normal": keep ik_btn/rk_btn, BUTTON_STYLES, DEFAULT_STYLES and style_for exactly as above (colours stay ON), but set every BUTTON_EMOJIS/TEXT_EMOJIS id to "" and EMOJI_LIBRARY = {}, NEVER set icon_custom_emoji_id and never emit <tg-emoji>; buttons show their normal unicode fallback emoji.`;
+
 const STANDARD_KEYS = ["main.shop", "main.cart", "main.orders", "main.support", "main.profile", "main.help", "admin.panel", "admin.dashboard", "admin.products", "admin.orders", "admin.users", "admin.broadcast", "admin.settings", "admin.emoji", "admin.hexa", "action.back", "action.approve", "action.reject", "action.cancel", "action.next", "action.add"];
 
 export function rules(emojis: Record<string, string>, meta: Record<string, any> = {}) {
-  const buttonIds: Record<string, string> = {}, styles: Record<string, string> = {}, fallbacks: Record<string, string> = {}, textIds: Record<string, [string, string]> = {};
+  const buttonIds: Record<string, string> = {}, styles: Record<string, string> = {}, fallbacks: Record<string, string> = {}, textIds: Record<string, [string, string]> = {}, library: Record<string, string> = {};
   for (const [k, id] of Object.entries(emojis)) {
     const m = meta[k] ?? {};
+    if (m.fallback && id && m.fallback !== "🔹") library[m.fallback] = id;
+    if (k.startsWith("u.")) continue;
     if (k.startsWith("text.") || m.kind === "text") { textIds[k.slice(5) || k] = [id, m.fallback || "🔹"]; continue; }
     buttonIds[k] = id; if (m.style) styles[k] = m.style; fallbacks[k] = m.fallback || "🔹";
   }
@@ -102,6 +109,8 @@ export function rules(emojis: Record<string, string>, meta: Record<string, any> 
 - PREMIUM EMOJI + BUTTON COLOUR SYSTEM (mandatory, Telegram Bot API InlineKeyboardButton fields icon_custom_emoji_id and style):
   BUTTON_EMOJIS = ${JSON.stringify(buttonIds)}
   BUTTON_STYLES = ${JSON.stringify(styles)}   # "primary"=blue, "success"=green, "danger"=red
+  DEFAULT_STYLES = ${JSON.stringify(DEFAULT_STYLES)}   # prefix -> colour, used when no explicit style
+  EMOJI_LIBRARY = ${JSON.stringify(library)}   # unicode emoji -> premium custom_emoji_id (platform library)
   FALLBACK_EMOJIS = ${JSON.stringify(fallbacks)}
   TEXT_EMOJIS = ${JSON.stringify(textIds)}   # name -> [custom_emoji_id, fallback]
   Store in data.json: data["settings"]["button_emojis"] = {key: id}. Keys are stable strings (main.*, action.*, admin.*); values are numeric Telegram custom emoji id strings only. Only include the keys this bot actually uses.
@@ -120,7 +129,7 @@ export function rules(emojis: Record<string, string>, meta: Record<string, any> 
             kw["icon_custom_emoji_id"] = eid   # premium icon: NO leading unicode emoji on text
         elif key and FALLBACK_EMOJIS.get(key):
             kw["text"] = f"{FALLBACK_EMOJIS[key]} {text}"
-        st = style or (data_style(key) if key else None)   # data["settings"]["button_styles"] or BUTTON_STYLES
+        st = style or (data_style(key) if key else None) or style_for(key)   # data["settings"]["button_styles"] or BUTTON_STYLES, else DEFAULT_STYLES
         if st in ("primary", "success", "danger"):
             kw["style"] = st
         return kw
@@ -132,13 +141,20 @@ export function rules(emojis: Record<string, string>, meta: Record<string, any> 
         """Reply KeyboardButton (bottom Menu) with premium icon + colour"""
         from telegram import KeyboardButton
         return KeyboardButton(**_btn_kwargs(text, key, style))
+    def style_for(key):
+        # longest matching DEFAULT_STYLES prefix, e.g. "action.back" -> "danger", "main." -> "primary"
+        k = key or ""
+        best = max((p for p in DEFAULT_STYLES if k.startswith(p)), key=len, default=None)
+        return DEFAULT_STYLES.get(best) if best else "primary"
+  BUTTON COLOUR IS ALWAYS ON: every important inline and reply-menu button gets a style — main/nav "primary", approve/confirm/add "success", reject/cancel/back/delete "danger". Never ship grey/default buttons.
+  UNICODE -> PREMIUM MATCHING: when a button key has no id but its label/fallback emoji exists in EMOJI_LIBRARY, use that library id as the button's icon_custom_emoji_id (and drop the unicode prefix). Same for message emojis via pe().
   Bot API 9.4+ fields icon_custom_emoji_id and style work on BOTH InlineKeyboardButton and KeyboardButton. Unicode emoji in text alone is NOT a premium icon.
   EVERY inline button uses ik_btn(...) with a key: InlineKeyboardMarkup([[ik_btn(...), ...], ...]). EVERY bottom Menu button uses rk_btn(...) with a key: ReplyKeyboardMarkup([[rk_btn(...), ...]], resize_keyboard=True). Reply-menu taps are matched in a MessageHandler by the plain label text (compare after stripping any fallback emoji prefix) — keep a LABEL->action map.
   BUTTON_EMOJIS must ALWAYS contain these standard keys (value "" when no ID): ${STANDARD_KEYS.join(", ")}.
   Messages: parse_mode="HTML"; pe(name) returns '<tg-emoji emoji-id="ID">FALLBACK</tg-emoji>' (or the fallback when ID empty) from TEXT_EMOJIS. In premium mode EVERY meaningful emoji-bearing heading, status, alert, success/error confirmation and menu description must use pe(); do not leave a mixture where only a few message emojis are premium.
   COMPLETENESS CHECK before returning code: inspect every InlineKeyboardButton, KeyboardButton and emoji-bearing message. Every user/admin button must go through ik_btn/rk_btn with a stable key and purpose-appropriate style; every eligible message emoji must go through pe(). No direct constructor may bypass these helpers.
 - PROFESSIONAL NESTED ADMIN PANEL (admin-only via ADMIN_ID, callback prefix "adm:"): Admin Panel (admin.panel) → Dashboard (admin.dashboard: user/order counts), Products (admin.products), Orders (admin.orders), Users (admin.users), Broadcast (admin.broadcast), Settings (admin.settings) → Emoji Settings (admin.emoji). ALL admin screens, submenus, prompts, pagination, confirmations, Back/Cancel controls and settings controls use InlineKeyboardMarkup/ik_btn ONLY—NEVER ReplyKeyboardMarkup, KeyboardButton or a bottom menu in an admin flow. Every sub-screen has a Back (action.back) button to its parent; edit the same message (edit_message_text) instead of sending new ones. Paginate every potentially long Products/Orders/Users list. Require inline Yes/No confirmation before destructive actions and broadcasts. Include only sections relevant to the bot, but always Dashboard, Broadcast, Settings, Emoji Settings.
-- Emoji Settings: EMOJI_LABELS dict lists ALL button keys used by this bot with readable names, paginated inline list; admin taps a key -> shows current id + colour; options: "Change emoji" (admin sends a message containing a premium emoji: read message.entities of type custom_emoji -> custom_emoji_id, or a plain numeric id), "Colour" (Blue/Green/Red/None buttons), "Reset default". Save to data["settings"]["button_emojis"][key] and data["settings"]["button_styles"][key]; changes apply instantly (rebuild menus) without restart.
+- Emoji Settings: EMOJI_LABELS dict lists ALL button keys used by this bot with readable names, paginated inline list; admin taps a key -> shows current id + colour; options: "Change emoji" (admin sends a message containing a premium emoji: read message.entities of type custom_emoji -> custom_emoji_id, or a plain numeric id), "Colour" (Blue/Green/Red/None buttons), "Reset default". Save to data["settings"]["button_emojis"][key] and data["settings"]["button_styles"][key]; changes apply instantly (rebuild menus) without restart. Also "Bulk paste" option: admin sends lines like "❤️‍🔥 - 6314409378971657327" (one per line); parse "<emoji> - <digits>", last id wins, report added/updated and invalid line counts, store in data["settings"]["emoji_library"] {unicode: id} and use it for unicode->premium matching. Applies to BOTH inline and reply-menu buttons on next render. If EMOJI_MODE is "normal", Emoji Settings shows: "প্রিমিয়াম আইকন চালু করতে Emoji mode = Premium করুন".
 - README.md (Bangla): what the bot does, commands, then these steps: 1. Hexa Boost Panel-এ ZIP আপলোড 2. Main/startup file: app.py 3. Environment: BOT_TOKEN, ADMIN_ID 4. Start → Console দেখুন. Permanent hosting: https://hexahoster.xyz
 - No website, no HTML — only Telegram bot code.`;
 }
@@ -154,9 +170,38 @@ export async function loadOwned(db: any, userId: string, botId: string) {
   return bot;
 }
 
+export function botType(text: string) {
+  if (/shop|store|দোকান|শপ|cart|কার্ট|product|প্রোডাক্ট|order|অর্ডার/i.test(text)) return "shop";
+  if (/support|ticket|সাপোর্ট|টিকেট|help ?desk/i.test(text)) return "support";
+  return "other";
+}
+
+/** After a successful build, remember its proven structure so the next similar bot starts from it. */
+export async function savePattern(db: any, prompt: string, code: string, emojiMode: string) {
+  if (!code) return;
+  const uniq = (a: string[]) => [...new Set(a)].slice(0, 40);
+  const keys = uniq([...code.matchAll(/["']((?:main|admin|action)\.[a-z0-9_.]+)["']/g)].map((m) => m[1]));
+  const sections = uniq([...code.matchAll(/["']adm:([a-z_]+)/g)].map((m) => m[1]));
+  const styleMap: Record<string, string> = {};
+  for (const m of code.matchAll(/["']((?:main|admin|action)\.[a-z0-9_.]+)["']\s*:\s*["'](primary|success|danger)["']/g)) styleMap[m[1]] = m[2];
+  const emojiMap: Record<string, string> = {};
+  for (const m of code.matchAll(/["']((?:main|admin|action)\.[a-z0-9_.]+)["']\s*:\s*["'](\d{5,30})["']/g)) emojiMap[m[1]] = m[2];
+  const flows: string[] = [];
+  if (/cart|কার্ট/i.test(code) && /checkout|চেকআউট/i.test(code)) flows.push("category→product→cart→checkout");
+  if (sections.length >= 3) flows.push("admin nested (Home → submenus → Back)");
+  if (/emoji_library|Bulk paste/i.test(code)) flows.push("admin emoji settings with bulk paste");
+  const quality = Math.min(5, 1 + (keys.length >= 10 ? 1 : 0) + (sections.length >= 4 ? 1 : 0) + (Object.keys(styleMap).length >= 5 ? 1 : 0) + (code.split("\n").length >= 800 ? 1 : 0));
+  const type = botType(prompt);
+  const pattern = { type, emoji_mode: emojiMode, flows, menu_keys: keys, admin_sections: sections, button_style_map: styleMap, emoji_map: emojiMap, pitfalls: [] as string[], quality_score: quality };
+  await db.from("bot_brain").insert({ source: "build", kind: "pattern", bot_type: type, pattern, quality, symptom: `${type} bot pattern`, fix_summary: flows.join("; ").slice(0, 300) });
+}
+
 export async function brainContext(db: any, text: string) {
-  const { data } = await db.from("bot_brain").select("id, error_signature, symptom, root_cause, fix_summary, use_count").order("created_at", { ascending: false }).limit(300);
-  if (!data?.length) return "";
+  const type = botType(text);
+  const { data: pats } = await db.from("bot_brain").select("pattern").eq("kind", "pattern").eq("bot_type", type).order("quality", { ascending: false }).order("created_at", { ascending: false }).limit(3);
+  const patText = pats?.length ? `\n\nPROVEN PATTERNS from past successful ${type} bots (reuse their flows, admin nesting, key names and colour map; the user's request wins on conflicts):\n${pats.map((p: any) => JSON.stringify(p.pattern).slice(0, 1500)).join("\n")}` : "";
+  const { data } = await db.from("bot_brain").select("id, error_signature, symptom, root_cause, fix_summary, use_count").neq("kind", "pattern").order("created_at", { ascending: false }).limit(300);
+  if (!data?.length) return patText;
   const words = new Set(text.toLowerCase().split(/[^\p{L}\p{N}_]+/u).filter((w) => w.length > 3));
   const scored = data.map((r: any) => {
     const hay = `${r.error_signature} ${r.symptom} ${r.root_cause} ${r.fix_summary}`.toLowerCase();
@@ -164,7 +209,7 @@ export async function brainContext(db: any, text: string) {
     return { r, s: s + Math.min(r.use_count, 20) / 20 };
   }).sort((a: any, b: any) => b.s - a.s).slice(0, 5).map((x: any) => x.r);
   await Promise.all(scored.map((r: any) => db.from("bot_brain").update({ use_count: r.use_count + 1 }).eq("id", r.id)));
-  return `\n\nPast fixes (avoid these mistakes):\n${scored.map((r: any) => `- ${r.symptom ?? ""} → cause: ${r.root_cause ?? ""}; fix: ${r.fix_summary ?? ""}`.slice(0, 300)).join("\n")}`;
+  return `${patText}\n\nPast fixes (avoid these mistakes):\n${scored.map((r: any) => `- ${r.symptom ?? ""} → cause: ${r.root_cause ?? ""}; fix: ${r.fix_summary ?? ""}`.slice(0, 300)).join("\n")}`;
 }
 
 export const createBot = createServerFn({ method: "POST" })
@@ -403,4 +448,20 @@ export const startBotBuild = createServerFn({ method: "POST" })
       await processBotJob(job.id);
     }
     return { ok: true, jobId: job.id as string, createdAt: job.created_at as string };
+  });
+
+/** Per-bot preferences the studio saves: emoji mode and in-progress plan answers (survive closing the browser). */
+export const setBotPrefs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { botId: string; emojiMode?: "premium" | "normal"; pendingAnswers?: string[]; clearPending?: boolean }) =>
+    z.object({ botId: z.string().uuid(), emojiMode: z.enum(["premium", "normal"]).optional(), pendingAnswers: z.array(z.string().max(20000)).max(20).optional(), clearPending: z.boolean().optional() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    await loadOwned(db, context.userId, data.botId);
+    const patch: Record<string, unknown> = {};
+    if (data.emojiMode) patch.emoji_mode = data.emojiMode;
+    if (data.pendingAnswers) patch.pending_answers = data.pendingAnswers;
+    if (data.clearPending) { patch.pending_questions = null; patch.pending_answers = null; }
+    if (Object.keys(patch).length) await db.from("bots").update(patch as any).eq("id", data.botId);
+    return { ok: true };
   });

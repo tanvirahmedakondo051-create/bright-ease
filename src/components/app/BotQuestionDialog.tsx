@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 export type BotQuestion = { q: string; options: string[] };
 export type BotQuestionAnswer = { question: string; answer: string };
 
-export function BotQuestionDialog({ questions, onDone, onCancel }: {
+export function BotQuestionDialog({ questions, onDone, onCancel, initial, onProgress }: {
   questions: BotQuestion[] | null;
+  initial?: string[] | null;
+  onProgress?: (answers: string[]) => void;
   onDone: (answers: BotQuestionAnswer[]) => void;
   onCancel: () => void;
 }) {
@@ -16,9 +18,10 @@ export function BotQuestionDialog({ questions, onDone, onCancel }: {
   const [custom, setCustom] = useState("");
 
   useEffect(() => {
-    setIndex(0);
-    setAnswers([]);
-    setSelected("");
+    const start = initial?.length ? Math.min(initial.length, (questions?.length ?? 1) - 1) : 0;
+    setIndex(start);
+    setAnswers(initial ?? []);
+    setSelected(initial?.[start] ?? "");
     setCustom("");
   }, [questions]);
 
@@ -35,6 +38,7 @@ export function BotQuestionDialog({ questions, onDone, onCancel }: {
       return;
     }
     const nextIndex = index + 1;
+    onProgress?.(nextAnswers);
     setAnswers(nextAnswers);
     setIndex(nextIndex);
     setSelected(nextAnswers[nextIndex] || "");

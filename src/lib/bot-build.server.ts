@@ -277,9 +277,47 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
     const reply = `=== SUMMARY ===\n${core.summary || "বট তৈরি হয়েছে (সাব-এজেন্ট দিয়ে সমান্তরালভাবে)।"}\n=== END SUMMARY ===\n=== FILE: app.py ===\n${app}\n=== END FILE ===\n${rest}`;
     return { reply, tokens: coreR.tokens + userR.tokens + adminR.tokens, finish: "stop", lastProviderStatus: 200 };
   };
-  const { shouldSplit } = await import("@/lib/sub-agents");
+  // Parallel upgrade of a big existing bot: Core edits first, then User + Admin at the same time.
+  // Each agent rewrites only its own section (or says UNCHANGED), so nobody rewrites 2,500 lines.
+  // Returns null to fall back to the normal single full rewrite.
+  const runSplitUpgrade = async () => {
+    const { splitExistingApp, upgradePrompt, parseUpgrade, mergeUpgrade, SECTION_TITLES } = await import("@/lib/sub-agents");
+    const s = splitExistingApp(files.find((f) => f.path === MAIN_FILE)?.content ?? "");
+    if (!s) return null;
+    let total = 0;
+    const run = async (key: "core" | "user" | "admin", sec: typeof s) => {
+      const { data: row } = await db.from("bot_subtasks").insert({ job_id: ctx.jobId, bot_id: bot.id, user_id: userId, sig: "upgrade", key, title: SECTION_TITLES[key], status: "running", attempts: 1 } as any).select("id").single();
+      const id = row?.id;
+      const r = await callAI([{ role: "system", content: `${upgradePrompt(key, sec)}\n${R}` }, { role: "user", content: userText }], "", async (lines) => {
+        const { data: j } = await db.from("bot_jobs").select("status").eq("id", ctx.jobId).maybeSingle();
+        if (j?.status === "cancelled") { await db.from("bot_subtasks").update({ status: "cancelled" }).eq("id", id); throw new Error("JOB_CANCELLED"); }
+        const t = new Date().toISOString();
+        await Promise.all([db.from("bot_subtasks").update({ lines, heartbeat_at: t }).eq("id", id), db.from("bot_jobs").update({ heartbeat_at: t, updated_at: t }).eq("id", ctx.jobId)]);
+      });
+      total += r.tokens;
+      const out = r.reply ? parseUpgrade(r.reply) : null;
+      await db.from("bot_subtasks").update(out ? { status: "done", output: r.reply, tokens: r.tokens, lines: r.reply.split("\n").length } : { status: "failed", error: "উত্তর পড়া যায়নি" }).eq("id", id);
+      return out;
+    };
+    await emit?.("সাব-এজেন্ট আপগ্রেড: Core অংশ দেখা হচ্ছে…");
+    const core = await run("core", s);
+    if (!core) return null;
+    const s2 = core.unchanged ? s : { ...s, core: core.code };
+    await emit?.("সাব-এজেন্ট আপগ্রেড: User ও Admin অংশ একসাথে আপডেট হচ্ছে…");
+    const [user, admin] = await Promise.all([run("user", s2), run("admin", s2)]);
+    if (!user || !admin) return null;
+    await emit?.("Integrator: অংশগুলো একটি app.py-তে জোড়া লাগানো হচ্ছে…");
+    const app = mergeUpgrade(s, { core, user, admin });
+    const changes = [core, user, admin].map((o) => (o.unchanged ? "" : o.changes)).filter(Boolean).join("\n");
+    const reply = `=== SUMMARY ===\nবট আপগ্রেড হয়েছে (সাব-এজেন্ট দিয়ে সমান্তরালভাবে)।\n=== END SUMMARY ===\n=== FILE: app.py ===\n${app}\n=== END FILE ===\n=== CHANGES ===\n${changes || "পরিবর্তন প্রয়োগ করা হয়েছে"}\n=== END CHANGES ===`;
+    return { reply, tokens: total, finish: "stop", lastProviderStatus: 200 };
+  };
+  const { shouldSplit, shouldSplitUpgrade } = await import("@/lib/sub-agents");
   const useSplit = data.mode === "build" && !!ctx.jobId && shouldSplit(data.prompt, isFix);
-  let { reply, tokens, finish, lastProviderStatus } = useSplit ? await runSplit() : await generate(messages);
+  const useSplitUpgrade = data.mode === "build" && !!ctx.jobId && isFix && shouldSplitUpgrade(files.find((f) => f.path === MAIN_FILE)?.content ?? "", !!data.errorLog);
+  let upgraded = useSplitUpgrade ? await runSplitUpgrade().catch((e) => { if (String(e?.message) === "JOB_CANCELLED") throw e; console.error("split upgrade", e); return null; }) : null;
+  if (useSplitUpgrade && !upgraded) await emit?.("সাব-এজেন্ট আপগ্রেড হয়নি — সাধারণ পদ্ধতিতে চলছে…");
+  let { reply, tokens, finish, lastProviderStatus } = upgraded ?? (useSplit ? await runSplit() : await generate(messages));
   if (!reply) {
     await db.from("bot_brain").insert({ source: "system", error_signature: "AI_PROVIDER_NO_RESPONSE", symptom: "Bot plan/build/fix request received no provider response", root_cause: "All configured AI providers failed or timed out", fix_summary: "Check provider health and retry; no bot files were changed" } as any);
     return { error: lastProviderStatus === 429 ? "AI এখন ব্যস্ত। একটু অপেক্ষা করে আবার চেষ্টা করুন—কোনো ফাইল বদলায়নি।" : "AI সংযোগ সাময়িকভাবে বন্ধ হয়েছে। আবার চেষ্টা করুন—কোনো ফাইল বা কয়েন বদলায়নি।" };

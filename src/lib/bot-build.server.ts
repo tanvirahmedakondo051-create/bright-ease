@@ -34,7 +34,7 @@ export type BotChatData = {
   mode: "chat" | "plan" | "build";
   errorLog?: string;
   questionAnswers?: { question: string; answer: string }[];
-  attachments?: { name: string; kind: "text" | "image"; content: string }[];
+  attachments?: { name: string; kind: "text" | "image" | "pdf" | "video"; content: string }[];
 };
 
 type Emit = (step: string) => Promise<void>;

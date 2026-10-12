@@ -36,24 +36,24 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   };
 
   const google = async () => {
-    const h = window.location.hostname;
-    const onLovable = h.endsWith(".lovable.app") || h.includes("lovableproject.com") || h === "localhost";
+    if (busy) return;
     setBusy(true);
-    if (!onLovable) {
-      // Self-hosted (VPS) domain: direct OAuth, browser redirects back to /login
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin + "/login" },
-      });
+    try {
+      const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/login" });
+      if (r.redirected) return; // browser is leaving for Google
+      if (r.error) {
+        setBusy(false);
+        toast.error("গুগল লগইন হয়নি। আবার চেষ্টা করুন।");
+        return;
+      }
+      const { data } = await supabase.auth.getSession();
       setBusy(false);
-      if (error) toast.error("গুগল লগইন ব্যর্থ হয়েছে");
-      return;
+      if (data.session) nav({ to: "/dashboard" });
+      else toast.error("গুগল লগইন হয়নি। আবার চেষ্টা করুন।");
+    } catch {
+      setBusy(false);
+      toast.error("গুগল লগইন হয়নি। আবার চেষ্টা করুন।");
     }
-    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/login" });
-    setBusy(false);
-    if (r.error) return toast.error("গুগল লগইন ব্যর্থ হয়েছে");
-    if (r.redirected) return;
-    nav({ to: "/dashboard" });
   };
 
   const submit = async (e: React.FormEvent) => {

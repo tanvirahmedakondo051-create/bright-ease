@@ -90,9 +90,10 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
   if (data.mode === "plan" && !emojiMode && !data.questionAnswers?.length) {
     return { ok: true, questions: [{ q: "বাটন ও মেসেজে কোন ধরনের emoji চান?", options: ["Premium emoji (লাইব্রেরির ID দিয়ে)", "সাধারণ (normal) emoji"] }], coins: 0 };
   }
+  const { NORMAL_MODE_RULE } = await import("@/lib/bot.functions");
   const R = emojiMode === "normal"
-    ? rules({}, {}).replace(/- PREMIUM EMOJI[\s\S]*?- README/, "- EMOJI: use ONLY normal Unicode emoji in button text and messages. Do NOT use icon_custom_emoji_id, <tg-emoji>, BUTTON_EMOJIS or an Emoji Settings menu.\n- README")
-    : rules(libIds, libMeta) + `\n- PREMIUM COVERAGE IS ALL-OR-NOTHING: for EVERY user/admin button pick the library key whose meaning matches and apply icon + purpose-appropriate colour; for EVERY meaningful emoji in headings, statuses, alerts and confirmations use the matching TEXT_EMOJIS key through pe(). Never premium-style only a few places and leave the rest inconsistent. Reuse matching keys instead of inventing empty ones.`;
+    ? rules({}, {}) + "\n" + NORMAL_MODE_RULE
+    : rules(libIds, libMeta) + `\n- EMOJI_MODE = "premium" (saved for this bot): never downgrade existing premium icons to unicode-only on fixes or upgrades.\n- PREMIUM COVERAGE IS ALL-OR-NOTHING: for EVERY user/admin button pick the library key whose meaning matches and apply icon + purpose-appropriate colour; for EVERY meaningful emoji in headings, statuses, alerts and confirmations use the matching TEXT_EMOJIS key through pe(). Never premium-style only a few places and leave the rest inconsistent. Reuse matching keys instead of inventing empty ones.`;
   const history: BotMsg[] = bot.messages ?? [];
   const brain = await brainContext(db, `${data.prompt} ${data.errorLog ?? ""}`).catch(() => "");
   const fileCtx = files.length ? `\n\nCURRENT BOT FILES:\n${files.map((f) => `--- ${f.path}\n${f.content}`).join("\n").slice(0, 200000)}` : "";

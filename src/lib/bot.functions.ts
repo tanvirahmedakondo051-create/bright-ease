@@ -83,12 +83,19 @@ export async function mergeButtonEmojis(db: any, code: string, current: Record<s
   if (Object.keys(merged).length !== Object.keys(current).length) await db.from("site_settings").update({ button_emojis: merged }).eq("id", 1);
 }
 
+export const DEFAULT_STYLES: Record<string, string> = { "main.": "primary", "admin.": "primary", "action.next": "primary", "action.approve": "success", "action.confirm": "success", "action.add": "success", "action.yes": "success", "action.reject": "danger", "action.cancel": "danger", "action.back": "danger", "action.delete": "danger", "action.no": "danger" };
+
+/** Normal emoji mode: same helpers and colours, but no premium icons anywhere. */
+export const NORMAL_MODE_RULE = `- EMOJI_MODE = "normal": keep ik_btn/rk_btn, BUTTON_STYLES, DEFAULT_STYLES and style_for exactly as above (colours stay ON), but set every BUTTON_EMOJIS/TEXT_EMOJIS id to "" and EMOJI_LIBRARY = {}, NEVER set icon_custom_emoji_id and never emit <tg-emoji>; buttons show their normal unicode fallback emoji.`;
+
 const STANDARD_KEYS = ["main.shop", "main.cart", "main.orders", "main.support", "main.profile", "main.help", "admin.panel", "admin.dashboard", "admin.products", "admin.orders", "admin.users", "admin.broadcast", "admin.settings", "admin.emoji", "admin.hexa", "action.back", "action.approve", "action.reject", "action.cancel", "action.next", "action.add"];
 
 export function rules(emojis: Record<string, string>, meta: Record<string, any> = {}) {
-  const buttonIds: Record<string, string> = {}, styles: Record<string, string> = {}, fallbacks: Record<string, string> = {}, textIds: Record<string, [string, string]> = {};
+  const buttonIds: Record<string, string> = {}, styles: Record<string, string> = {}, fallbacks: Record<string, string> = {}, textIds: Record<string, [string, string]> = {}, library: Record<string, string> = {};
   for (const [k, id] of Object.entries(emojis)) {
     const m = meta[k] ?? {};
+    if (m.fallback && id && m.fallback !== "🔹") library[m.fallback] = id;
+    if (k.startsWith("u.")) continue;
     if (k.startsWith("text.") || m.kind === "text") { textIds[k.slice(5) || k] = [id, m.fallback || "🔹"]; continue; }
     buttonIds[k] = id; if (m.style) styles[k] = m.style; fallbacks[k] = m.fallback || "🔹";
   }
@@ -102,6 +109,8 @@ export function rules(emojis: Record<string, string>, meta: Record<string, any> 
 - PREMIUM EMOJI + BUTTON COLOUR SYSTEM (mandatory, Telegram Bot API InlineKeyboardButton fields icon_custom_emoji_id and style):
   BUTTON_EMOJIS = ${JSON.stringify(buttonIds)}
   BUTTON_STYLES = ${JSON.stringify(styles)}   # "primary"=blue, "success"=green, "danger"=red
+  DEFAULT_STYLES = ${JSON.stringify(DEFAULT_STYLES)}   # prefix -> colour, used when no explicit style
+  EMOJI_LIBRARY = ${JSON.stringify(library)}   # unicode emoji -> premium custom_emoji_id (platform library)
   FALLBACK_EMOJIS = ${JSON.stringify(fallbacks)}
   TEXT_EMOJIS = ${JSON.stringify(textIds)}   # name -> [custom_emoji_id, fallback]
   Store in data.json: data["settings"]["button_emojis"] = {key: id}. Keys are stable strings (main.*, action.*, admin.*); values are numeric Telegram custom emoji id strings only. Only include the keys this bot actually uses.
@@ -120,7 +129,7 @@ export function rules(emojis: Record<string, string>, meta: Record<string, any> 
             kw["icon_custom_emoji_id"] = eid   # premium icon: NO leading unicode emoji on text
         elif key and FALLBACK_EMOJIS.get(key):
             kw["text"] = f"{FALLBACK_EMOJIS[key]} {text}"
-        st = style or (data_style(key) if key else None)   # data["settings"]["button_styles"] or BUTTON_STYLES
+        st = style or (data_style(key) if key else None) or style_for(key)   # data["settings"]["button_styles"] or BUTTON_STYLES, else DEFAULT_STYLES
         if st in ("primary", "success", "danger"):
             kw["style"] = st
         return kw
@@ -132,13 +141,20 @@ export function rules(emojis: Record<string, string>, meta: Record<string, any> 
         """Reply KeyboardButton (bottom Menu) with premium icon + colour"""
         from telegram import KeyboardButton
         return KeyboardButton(**_btn_kwargs(text, key, style))
+    def style_for(key):
+        # longest matching DEFAULT_STYLES prefix, e.g. "action.back" -> "danger", "main." -> "primary"
+        k = key or ""
+        best = max((p for p in DEFAULT_STYLES if k.startswith(p)), key=len, default=None)
+        return DEFAULT_STYLES.get(best) if best else "primary"
+  BUTTON COLOUR IS ALWAYS ON: every important inline and reply-menu button gets a style — main/nav "primary", approve/confirm/add "success", reject/cancel/back/delete "danger". Never ship grey/default buttons.
+  UNICODE -> PREMIUM MATCHING: when a button key has no id but its label/fallback emoji exists in EMOJI_LIBRARY, use that library id as the button's icon_custom_emoji_id (and drop the unicode prefix). Same for message emojis via pe().
   Bot API 9.4+ fields icon_custom_emoji_id and style work on BOTH InlineKeyboardButton and KeyboardButton. Unicode emoji in text alone is NOT a premium icon.
   EVERY inline button uses ik_btn(...) with a key: InlineKeyboardMarkup([[ik_btn(...), ...], ...]). EVERY bottom Menu button uses rk_btn(...) with a key: ReplyKeyboardMarkup([[rk_btn(...), ...]], resize_keyboard=True). Reply-menu taps are matched in a MessageHandler by the plain label text (compare after stripping any fallback emoji prefix) — keep a LABEL->action map.
   BUTTON_EMOJIS must ALWAYS contain these standard keys (value "" when no ID): ${STANDARD_KEYS.join(", ")}.
   Messages: parse_mode="HTML"; pe(name) returns '<tg-emoji emoji-id="ID">FALLBACK</tg-emoji>' (or the fallback when ID empty) from TEXT_EMOJIS. In premium mode EVERY meaningful emoji-bearing heading, status, alert, success/error confirmation and menu description must use pe(); do not leave a mixture where only a few message emojis are premium.
   COMPLETENESS CHECK before returning code: inspect every InlineKeyboardButton, KeyboardButton and emoji-bearing message. Every user/admin button must go through ik_btn/rk_btn with a stable key and purpose-appropriate style; every eligible message emoji must go through pe(). No direct constructor may bypass these helpers.
 - PROFESSIONAL NESTED ADMIN PANEL (admin-only via ADMIN_ID, callback prefix "adm:"): Admin Panel (admin.panel) → Dashboard (admin.dashboard: user/order counts), Products (admin.products), Orders (admin.orders), Users (admin.users), Broadcast (admin.broadcast), Settings (admin.settings) → Emoji Settings (admin.emoji). ALL admin screens, submenus, prompts, pagination, confirmations, Back/Cancel controls and settings controls use InlineKeyboardMarkup/ik_btn ONLY—NEVER ReplyKeyboardMarkup, KeyboardButton or a bottom menu in an admin flow. Every sub-screen has a Back (action.back) button to its parent; edit the same message (edit_message_text) instead of sending new ones. Paginate every potentially long Products/Orders/Users list. Require inline Yes/No confirmation before destructive actions and broadcasts. Include only sections relevant to the bot, but always Dashboard, Broadcast, Settings, Emoji Settings.
-- Emoji Settings: EMOJI_LABELS dict lists ALL button keys used by this bot with readable names, paginated inline list; admin taps a key -> shows current id + colour; options: "Change emoji" (admin sends a message containing a premium emoji: read message.entities of type custom_emoji -> custom_emoji_id, or a plain numeric id), "Colour" (Blue/Green/Red/None buttons), "Reset default". Save to data["settings"]["button_emojis"][key] and data["settings"]["button_styles"][key]; changes apply instantly (rebuild menus) without restart.
+- Emoji Settings: EMOJI_LABELS dict lists ALL button keys used by this bot with readable names, paginated inline list; admin taps a key -> shows current id + colour; options: "Change emoji" (admin sends a message containing a premium emoji: read message.entities of type custom_emoji -> custom_emoji_id, or a plain numeric id), "Colour" (Blue/Green/Red/None buttons), "Reset default". Save to data["settings"]["button_emojis"][key] and data["settings"]["button_styles"][key]; changes apply instantly (rebuild menus) without restart. Also "Bulk paste" option: admin sends lines like "❤️‍🔥 - 6314409378971657327" (one per line); parse "<emoji> - <digits>", last id wins, report added/updated and invalid line counts, store in data["settings"]["emoji_library"] {unicode: id} and use it for unicode->premium matching. Applies to BOTH inline and reply-menu buttons on next render. If EMOJI_MODE is "normal", Emoji Settings shows: "প্রিমিয়াম আইকন চালু করতে Emoji mode = Premium করুন".
 - README.md (Bangla): what the bot does, commands, then these steps: 1. Hexa Boost Panel-এ ZIP আপলোড 2. Main/startup file: app.py 3. Environment: BOT_TOKEN, ADMIN_ID 4. Start → Console দেখুন. Permanent hosting: https://hexahoster.xyz
 - No website, no HTML — only Telegram bot code.`;
 }

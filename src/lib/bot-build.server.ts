@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { extractJson } from "@/lib/patch";
 import { hasUnclosedBlock, parseFileBlocks } from "@/lib/file-blocks";
-import { missingFeatures, truncationProblems } from "@/lib/preserve-check";
+import { missingFeatures, premiumLost, truncationProblems } from "@/lib/preserve-check";
 import {
   ALLOWED_FILES,
   MAIN_FILE,
@@ -19,6 +19,8 @@ import {
   loadOwned,
   mergeButtonEmojis,
   rules,
+  NORMAL_MODE_RULE,
+  savePattern,
   usageToday,
   wait,
   type BotFile,
@@ -90,7 +92,6 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
   if (data.mode === "plan" && !emojiMode && !data.questionAnswers?.length) {
     return { ok: true, questions: [{ q: "বাটন ও মেসেজে কোন ধরনের emoji চান?", options: ["Premium emoji (লাইব্রেরির ID দিয়ে)", "সাধারণ (normal) emoji"] }], coins: 0 };
   }
-  const { NORMAL_MODE_RULE } = await import("@/lib/bot.functions");
   const R = emojiMode === "normal"
     ? rules({}, {}) + "\n" + NORMAL_MODE_RULE
     : rules(libIds, libMeta) + `\n- EMOJI_MODE = "premium" (saved for this bot): never downgrade existing premium icons to unicode-only on fixes or upgrades.\n- PREMIUM COVERAGE IS ALL-OR-NOTHING: for EVERY user/admin button pick the library key whose meaning matches and apply icon + purpose-appropriate colour; for EVERY meaningful emoji in headings, statuses, alerts and confirmations use the matching TEXT_EMOJIS key through pe(). Never premium-style only a few places and leave the rest inconsistent. Reuse matching keys instead of inventing empty ones.`;
@@ -343,6 +344,7 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
         await db.rpc("add_coins", { _user: userId, _amount: -coins, _type: "spend", _reason: "টেলিগ্রাম বট" } as any);
         await db.from("usage_logs").insert({ user_id: userId, tokens_used: tokens, provider_name: "bot" } as any);
         await addUsage(db, userId, { ai_messages: 1 });
+        await db.from("bots").update({ pending_questions: { prompt: data.prompt, mode: "plan", questions: qs.data.slice(0, 3) }, pending_answers: null } as any).eq("id", bot.id);
         return { ok: true, questions: qs.data.slice(0, 3).map((q) => ({ q: q.q.slice(0, 500), options: q.options.slice(0, 4).map((o) => o.slice(0, 300)) })), coins };
       }
     }
@@ -379,6 +381,7 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
       else {
         if (fb.unclosed) problems.push("reply was cut off (a FILE block never closed)");
         problems.push(...truncationProblems(py, isFix ? oldPy : undefined));
+        if (isFix && emojiMode !== "normal" && premiumLost(oldPy, py)) problems.push("premium emoji icons (icon_custom_emoji_id) were removed — this bot is in Premium emoji mode, keep every premium icon");
       }
       const missing = isFix && py && !allowRemoval ? missingFeatures(oldPy, py) : [];
       return { list: merged, summary, brainRow, changes: fb.sections.changes ?? "", problems, missing };
@@ -424,7 +427,8 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
   const msgs: BotMsg[] = [...history, { role: "user", content: attNames ? `${data.prompt}\n\n${attNames}` : data.prompt, mode: isFix ? "fix" : data.mode, at: now }, assistant];
   await db.rpc("add_coins", { _user: userId, _amount: -coins, _type: "spend", _reason: "টেলিগ্রাম বট" } as any);
   await db.from("usage_logs").insert({ user_id: userId, tokens_used: tokens + extraTokens, provider_name: "bot" } as any);
-  await db.from("bots").update({ messages: msgs, files: newFiles, updated_at: now, ...(data.mode === "build" ? { last_build_at: now } : {}) } as any).eq("id", bot.id);
+  await db.from("bots").update({ messages: msgs, files: newFiles, updated_at: now, pending_questions: null, pending_answers: null, ...(data.mode === "build" ? { last_build_at: now } : {}) } as any).eq("id", bot.id);
+  if (data.mode === "build") await savePattern(db, data.prompt, newFiles.find((f) => f.path === MAIN_FILE)?.content ?? "", emojiMode || "premium").catch((e) => console.error("brain pattern", e));
   await addUsage(db, userId, { ai_messages: 1, fix_requests: isFix ? 1 : 0, builds: data.mode === "build" ? 1 : 0 });
   return { ok: true, coins, ms, imageNotice };
 }

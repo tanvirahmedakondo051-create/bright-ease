@@ -170,9 +170,38 @@ export async function loadOwned(db: any, userId: string, botId: string) {
   return bot;
 }
 
+export function botType(text: string) {
+  if (/shop|store|দোকান|শপ|cart|কার্ট|product|প্রোডাক্ট|order|অর্ডার/i.test(text)) return "shop";
+  if (/support|ticket|সাপোর্ট|টিকেট|help ?desk/i.test(text)) return "support";
+  return "other";
+}
+
+/** After a successful build, remember its proven structure so the next similar bot starts from it. */
+export async function savePattern(db: any, prompt: string, code: string, emojiMode: string) {
+  if (!code) return;
+  const uniq = (a: string[]) => [...new Set(a)].slice(0, 40);
+  const keys = uniq([...code.matchAll(/["']((?:main|admin|action)\.[a-z0-9_.]+)["']/g)].map((m) => m[1]));
+  const sections = uniq([...code.matchAll(/["']adm:([a-z_]+)/g)].map((m) => m[1]));
+  const styleMap: Record<string, string> = {};
+  for (const m of code.matchAll(/["']((?:main|admin|action)\.[a-z0-9_.]+)["']\s*:\s*["'](primary|success|danger)["']/g)) styleMap[m[1]] = m[2];
+  const emojiMap: Record<string, string> = {};
+  for (const m of code.matchAll(/["']((?:main|admin|action)\.[a-z0-9_.]+)["']\s*:\s*["'](\d{5,30})["']/g)) emojiMap[m[1]] = m[2];
+  const flows: string[] = [];
+  if (/cart|কার্ট/i.test(code) && /checkout|চেকআউট/i.test(code)) flows.push("category→product→cart→checkout");
+  if (sections.length >= 3) flows.push("admin nested (Home → submenus → Back)");
+  if (/emoji_library|Bulk paste/i.test(code)) flows.push("admin emoji settings with bulk paste");
+  const quality = Math.min(5, 1 + (keys.length >= 10 ? 1 : 0) + (sections.length >= 4 ? 1 : 0) + (Object.keys(styleMap).length >= 5 ? 1 : 0) + (code.split("\n").length >= 800 ? 1 : 0));
+  const type = botType(prompt);
+  const pattern = { type, emoji_mode: emojiMode, flows, menu_keys: keys, admin_sections: sections, button_style_map: styleMap, emoji_map: emojiMap, pitfalls: [] as string[], quality_score: quality };
+  await db.from("bot_brain").insert({ source: "build", kind: "pattern", bot_type: type, pattern, quality, symptom: `${type} bot pattern`, fix_summary: flows.join("; ").slice(0, 300) });
+}
+
 export async function brainContext(db: any, text: string) {
-  const { data } = await db.from("bot_brain").select("id, error_signature, symptom, root_cause, fix_summary, use_count").order("created_at", { ascending: false }).limit(300);
-  if (!data?.length) return "";
+  const type = botType(text);
+  const { data: pats } = await db.from("bot_brain").select("pattern").eq("kind", "pattern").eq("bot_type", type).order("quality", { ascending: false }).order("created_at", { ascending: false }).limit(3);
+  const patText = pats?.length ? `\n\nPROVEN PATTERNS from past successful ${type} bots (reuse their flows, admin nesting, key names and colour map; the user's request wins on conflicts):\n${pats.map((p: any) => JSON.stringify(p.pattern).slice(0, 1500)).join("\n")}` : "";
+  const { data } = await db.from("bot_brain").select("id, error_signature, symptom, root_cause, fix_summary, use_count").neq("kind", "pattern").order("created_at", { ascending: false }).limit(300);
+  if (!data?.length) return patText;
   const words = new Set(text.toLowerCase().split(/[^\p{L}\p{N}_]+/u).filter((w) => w.length > 3));
   const scored = data.map((r: any) => {
     const hay = `${r.error_signature} ${r.symptom} ${r.root_cause} ${r.fix_summary}`.toLowerCase();
@@ -180,7 +209,7 @@ export async function brainContext(db: any, text: string) {
     return { r, s: s + Math.min(r.use_count, 20) / 20 };
   }).sort((a: any, b: any) => b.s - a.s).slice(0, 5).map((x: any) => x.r);
   await Promise.all(scored.map((r: any) => db.from("bot_brain").update({ use_count: r.use_count + 1 }).eq("id", r.id)));
-  return `\n\nPast fixes (avoid these mistakes):\n${scored.map((r: any) => `- ${r.symptom ?? ""} → cause: ${r.root_cause ?? ""}; fix: ${r.fix_summary ?? ""}`.slice(0, 300)).join("\n")}`;
+  return `${patText}\n\nPast fixes (avoid these mistakes):\n${scored.map((r: any) => `- ${r.symptom ?? ""} → cause: ${r.root_cause ?? ""}; fix: ${r.fix_summary ?? ""}`.slice(0, 300)).join("\n")}`;
 }
 
 export const createBot = createServerFn({ method: "POST" })

@@ -1,3 +1,4 @@
+import { sanitizeBrain } from "./bot-validate";
 // Telegram bot studio: AI writes Python bots; users download a ZIP or run a 5-minute test on the VPS agent.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -102,9 +103,12 @@ export function rules(emojis: Record<string, string>, meta: Record<string, any> 
   for (const k of STANDARD_KEYS) if (!(k in buttonIds)) buttonIds[k] = "";
   return `OUTPUT STANDARD (always follow):
 - Files: EXACTLY app.py (main/startup file), requirements.txt, README.md. Package is uploaded to Hexa Boost Panel (never name the underlying panel software). NEVER create .env or .env.example. NEVER write tokens, ids or secrets into any file.
-- Python 3.10+, python-telegram-bot>=22.7 in requirements.txt (Application, async handlers, application.run_polling(allowed_updates=Update.ALL_TYPES)). Use ONLY documented methods/fields from https://core.telegram.org/bots/api and https://core.telegram.org/bots/api-changelog (Bot API 10.3 features allowed). On start print a clear line like "✅ Bot started — @username" to the console.
+- Python 3.10+, python-telegram-bot>=22.7 in requirements.txt (Application, async handlers, application.run_polling(allowed_updates=Update.ALL_TYPES)). Use ONLY documented methods/fields from https://core.telegram.org/bots/api and https://core.telegram.org/bots/api-changelog (Bot API 10.3 features allowed). On start print exactly "Bot started successfully" to the console.
 - Config ONLY via os.environ: BOT_TOKEN = os.environ["BOT_TOKEN"], ADMIN_ID = int(os.environ["ADMIN_ID"]). No python-dotenv.
-- Storage data.json (safe load/save helpers, created if missing). Keep settings under data["settings"].
+- Storage data.json (safe load/save helpers, created if missing; ATOMIC save: write data.json.tmp then os.replace). Keep settings under data["settings"]. Use MongoDB/Postgres ONLY if the user explicitly asks for it.
+- MENU ROUTING (must work): ONE MessageHandler(filters.TEXT & ~filters.COMMAND) routes all bottom-menu labels by SUBSTRING match of the label words (e.g. if "দোকান" in text), so emoji/premium prefixes never break it. Register it in an earlier group than any admin catch-all text handler so nothing blocks it. Log print(f"RAW_TEXT: {text!r}") and print(f"MENU_ACTION: {action}") for every routed message.
+- Admin panel = nested inline menus (Home → section → Back), never one wall of buttons.
+- README must note: one bot token = one running copy — stop the 5-minute test before starting the bot on Hexa Boost Panel.
 - Always /start, /help, inline keyboard menus, admin-only commands guarded by ADMIN_ID, a global error handler, logging. Bangla text for users unless asked otherwise.
 - PREMIUM EMOJI + BUTTON COLOUR SYSTEM (mandatory, Telegram Bot API InlineKeyboardButton fields icon_custom_emoji_id and style):
   BUTTON_EMOJIS = ${JSON.stringify(buttonIds)}
@@ -193,6 +197,7 @@ export async function savePattern(db: any, prompt: string, code: string, emojiMo
   const quality = Math.min(5, 1 + (keys.length >= 10 ? 1 : 0) + (sections.length >= 4 ? 1 : 0) + (Object.keys(styleMap).length >= 5 ? 1 : 0) + (code.split("\n").length >= 800 ? 1 : 0));
   const type = botType(prompt);
   const pattern = { type, emoji_mode: emojiMode, flows, menu_keys: keys, admin_sections: sections, button_style_map: styleMap, emoji_map: emojiMap, pitfalls: [] as string[], quality_score: quality };
+  pattern.flows = pattern.flows.map(sanitizeBrain);
   await db.from("bot_brain").insert({ source: "build", kind: "pattern", bot_type: type, pattern, quality, symptom: `${type} bot pattern`, fix_summary: flows.join("; ").slice(0, 300) });
 }
 

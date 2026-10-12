@@ -172,14 +172,22 @@ export const adminTestAgent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const db: any = await adminDb(context);
-    const { getAgent } = await import("./deploy.server");
+    const { getAgent, agentCall } = await import("./deploy.server");
     const agent = await getAgent(db);
     if (!agent) return { error: "সার্ভার ঠিকানা বা টোকেন দেওয়া হয়নি" };
     try {
       const r = await fetch(agent.url + "/health", { signal: AbortSignal.timeout(10000) });
-      return r.ok ? { ok: true as const } : { error: `সার্ভার সাড়া দিয়েছে কিন্তু সমস্যা (${r.status})` };
+      if (!r.ok) return { error: `সার্ভার সাড়া দিয়েছে কিন্তু সমস্যা (${r.status})` };
     } catch {
       return { error: "সার্ভারে সংযোগ হয়নি — ঠিকানা, পোর্ট ও SSL যাচাই করুন" };
+    }
+    // Signed call: proves the VPS has the same token as the website.
+    try {
+      await agentCall(agent, "/bot/logs", { botId: "00000000-0000-0000-0000-000000000000" }, undefined, 10000);
+      return { ok: true as const };
+    } catch (e: any) {
+      if (String(e?.message ?? "").includes("401")) return { error: "সার্ভার অনলাইন, কিন্তু token মেলেনি — VPS-এ নতুন কমান্ড রান করুন, তারপর: sudo systemctl restart hexa-agent" };
+      return { error: "টোকেন যাচাই করা যায়নি" };
     }
   });
 

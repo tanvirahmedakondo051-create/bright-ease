@@ -392,17 +392,23 @@ export const stopTempHost = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const attachmentsSchema = z.array(z.object({ name: z.string().max(200), kind: z.enum(["text", "image", "pdf", "video"]), content: z.string().max(11_000_000) })).max(10).optional()
+  .refine((a) => !a || (a.reduce((n, x) => n + x.content.length, 0) <= 40_000_000 && a.every((x) =>
+    x.kind === "image" ? /^data:image\/(jpeg|png|webp|gif);base64,/.test(x.content)
+    : x.kind === "pdf" ? /^data:application\/pdf;base64,/.test(x.content)
+    : x.kind === "video" ? (() => { try { const f = JSON.parse(x.content); return Array.isArray(f) && f.length <= 4 && f.every((u: unknown) => typeof u === "string" && u.startsWith("data:image/jpeg;base64,")); } catch { return false; } })()
+    : x.content.length <= 300_000)), "Invalid attachments");
+
 export const botChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { botId: string; prompt: string; mode: "chat" | "plan" | "build"; errorLog?: string; questionAnswers?: BotAnswer[]; attachments?: { name: string; kind: "text" | "image"; content: string }[] }) =>
+  .inputValidator((d: { botId: string; prompt: string; mode: "chat" | "plan" | "build"; errorLog?: string; questionAnswers?: BotAnswer[]; attachments?: { name: string; kind: "text" | "image" | "pdf" | "video"; content: string }[] }) =>
     z.object({
       botId: z.string().uuid(),
       prompt: z.string().min(1).max(60000),
       mode: z.enum(["chat", "plan", "build"]),
       errorLog: z.string().max(60000).optional(),
       questionAnswers: z.array(z.object({ question: z.string().max(4000), answer: z.string().max(20000) })).max(20).optional(),
-      attachments: z.array(z.object({ name: z.string().max(200), kind: z.enum(["text", "image"]), content: z.string().max(6_000_000) })).max(6).optional()
-        .refine((a) => !a || (a.filter((x) => x.kind === "image").length <= 3 && a.every((x) => x.kind === "image" ? /^data:image\/(jpeg|png|webp);base64,/.test(x.content) : x.content.length <= 300_000)), "Invalid attachments"),
+      attachments: attachmentsSchema,
     }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
@@ -416,8 +422,7 @@ const buildInput = z.object({
   prompt: z.string().min(1).max(60000),
   errorLog: z.string().max(60000).optional(),
   questionAnswers: z.array(z.object({ question: z.string().max(4000), answer: z.string().max(20000) })).max(20).optional(),
-  attachments: z.array(z.object({ name: z.string().max(200), kind: z.enum(["text", "image"]), content: z.string().max(6_000_000) })).max(6).optional()
-    .refine((a) => !a || (a.filter((x) => x.kind === "image").length <= 3 && a.every((x) => x.kind === "image" ? /^data:image\/(jpeg|png|webp);base64,/.test(x.content) : x.content.length <= 300_000)), "Invalid attachments"),
+  attachments: attachmentsSchema,
 });
 
 // Starts a background build: the job row is created first, then the build runs on the server.
@@ -425,7 +430,7 @@ const buildInput = z.object({
 // build finishes even with the screen off or the app closed. Coins are charged only on save.
 export const startBotBuild = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { botId: string; prompt: string; mode?: "chat" | "plan" | "build"; errorLog?: string; questionAnswers?: BotAnswer[]; attachments?: { name: string; kind: "text" | "image"; content: string }[] }) => buildInput.parse(d))
+  .inputValidator((d: { botId: string; prompt: string; mode?: "chat" | "plan" | "build"; errorLog?: string; questionAnswers?: BotAnswer[]; attachments?: { name: string; kind: "text" | "image" | "pdf" | "video"; content: string }[] }) => buildInput.parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
     const bot = await loadOwned(db, context.userId, data.botId);

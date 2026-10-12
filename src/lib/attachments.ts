@@ -3,7 +3,7 @@ import { toast } from "sonner";
 export type Attachment = { name: string; kind: "text" | "image" | "pdf" | "video"; content: string };
 
 export const MAX_ITEMS = 10;
-const FILE_MAX = 20_000_000;
+const FILE_MAX = 200_000_000;
 const TEXT_MAX = 300_000;
 const TEXT_RE = /\.(py|txt|json|md|csv|html?|css|js|ts|tsx|jsx|ya?ml|toml|ini|cfg|env|example|log|xml|sql|sh)$/i;
 
@@ -68,7 +68,7 @@ export async function readAttachments(files: FileList | File[], existing: Attach
   let count = existing.length;
   for (const f of Array.from(files)) {
     if (count >= MAX_ITEMS) { toast.error(`সর্বোচ্চ ${MAX_ITEMS}টি জিনিস দেওয়া যাবে`); break; }
-    if (f.size > FILE_MAX) { toast.error(`${f.name} — ২০ MB-এর বেশি`); continue; }
+    if (f.size > FILE_MAX) { toast.error(`${f.name} — ২০০ MB-এর বেশি`); continue; }
     try {
       if (f.type.startsWith("image/")) out.push({ name: f.name, kind: "image", content: await resizeImage(f) });
       else if (f.type.startsWith("video/") || /\.(mp4|webm|mov)$/i.test(f.name)) {

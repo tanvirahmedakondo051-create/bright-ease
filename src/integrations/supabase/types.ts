@@ -310,6 +310,60 @@ export type Database = {
           },
         ]
       }
+      bot_subtasks: {
+        Row: {
+          attempts: number
+          bot_id: string
+          created_at: string
+          error: string | null
+          heartbeat_at: string
+          id: string
+          job_id: string
+          key: string
+          lines: number
+          output: string
+          sig: string
+          status: string
+          title: string
+          tokens: number
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          bot_id: string
+          created_at?: string
+          error?: string | null
+          heartbeat_at?: string
+          id?: string
+          job_id: string
+          key: string
+          lines?: number
+          output?: string
+          sig: string
+          status?: string
+          title?: string
+          tokens?: number
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          bot_id?: string
+          created_at?: string
+          error?: string | null
+          heartbeat_at?: string
+          id?: string
+          job_id?: string
+          key?: string
+          lines?: number
+          output?: string
+          sig?: string
+          status?: string
+          title?: string
+          tokens?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       bot_usage_daily: {
         Row: {
           ai_messages: number

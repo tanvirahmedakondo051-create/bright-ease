@@ -390,9 +390,16 @@ export const startBotBuild = createServerFn({ method: "POST" })
     const input = { ...data, mode: "build" as const };
     const { data: job, error } = await db.from("bot_jobs").insert({ bot_id: data.botId, user_id: context.userId, status: "queued", input } as any).select("id, created_at").single();
     if (error || !job) return { error: "বিল্ড শুরু করা যায়নি — আবার চেষ্টা করুন" };
-    // Fast path: run it right away. If this request dies (screen off), the cron sweeper
-    // re-claims the job after its heartbeat goes stale and finishes it.
-    const { processBotJob } = await import("@/lib/bot-build.server");
-    await processBotJob(job.id);
+    // The database starts the build in its own server request (pg_net), so it keeps running
+    // even if this request or the user's phone disconnects. A sweeper re-kicks dead jobs.
+    const { appOrigin } = await import("@/lib/origin.server");
+    let origin = appOrigin();
+    // Preview hosts need a login cookie that the database call cannot send.
+    if (/id-preview--|localhost|lovableproject\.com/.test(origin)) origin = "https://bright-ease.lovable.app";
+    const { error: kickErr } = await db.rpc("kick_bot_job" as any, { _id: job.id, _origin: origin } as any);
+    if (kickErr) {
+      const { processBotJob } = await import("@/lib/bot-build.server");
+      await processBotJob(job.id);
+    }
     return { ok: true, jobId: job.id as string, createdAt: job.created_at as string };
   });

@@ -449,3 +449,19 @@ export const startBotBuild = createServerFn({ method: "POST" })
     }
     return { ok: true, jobId: job.id as string, createdAt: job.created_at as string };
   });
+
+/** Per-bot preferences the studio saves: emoji mode and in-progress plan answers (survive closing the browser). */
+export const setBotPrefs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { botId: string; emojiMode?: "premium" | "normal"; pendingAnswers?: string[]; clearPending?: boolean }) =>
+    z.object({ botId: z.string().uuid(), emojiMode: z.enum(["premium", "normal"]).optional(), pendingAnswers: z.array(z.string().max(20000)).max(20).optional(), clearPending: z.boolean().optional() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    await loadOwned(db, context.userId, data.botId);
+    const patch: Record<string, unknown> = {};
+    if (data.emojiMode) patch.emoji_mode = data.emojiMode;
+    if (data.pendingAnswers) patch.pending_answers = data.pendingAnswers;
+    if (data.clearPending) { patch.pending_questions = null; patch.pending_answers = null; }
+    if (Object.keys(patch).length) await db.from("bots").update(patch as any).eq("id", data.botId);
+    return { ok: true };
+  });

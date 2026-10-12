@@ -9,7 +9,7 @@ import { AlertTriangle, ArrowUp, Bot, FileCode2, FolderOpen, Hammer, Image as Im
 import { readAttachments, type Attachment } from "@/lib/attachments";
 import { zipSync, strToU8 } from "fflate";
 import { supabase } from "@/integrations/supabase/client";
-import { botStatus, createBot, listVersions, renameBot, restoreVersion, saveBotSecrets, startBotBuild, startTempHost, stopTempHost } from "@/lib/bot.functions";
+import { botStatus, createBot, listVersions, renameBot, restoreVersion, saveBotSecrets, setBotPrefs, startBotBuild, startTempHost, stopTempHost } from "@/lib/bot.functions";
 import { activeBotJob, botJobStatus, cancelBotBuild } from "@/lib/jobs.functions";
 import { RichText } from "@/components/app/ChatParts";
 import { BotQuestionDialog, type BotQuestion, type BotQuestionAnswer } from "@/components/app/BotQuestionDialog";
@@ -64,6 +64,8 @@ function Studio() {
   const [starting, setStarting] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<null | "projects" | "files" | "versions" | "log">(null);
+  const prefsFn = useServerFn(setBotPrefs);
+  const [initialAnswers, setInitialAnswers] = useState<string[] | null>(null);
   const runId = useRef(0);
   const jobRef = useRef<string | null>(null);
   const [jobStep, setJobStep] = useState("");
@@ -77,7 +79,7 @@ function Studio() {
   const { data: bot } = useQuery({
     queryKey: ["bot", botId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("bots").select("id, name, files, messages, last_build_at").eq("id", botId).single();
+      const { data, error } = await supabase.from("bots").select("id, name, files, messages, last_build_at, emoji_mode, pending_questions, pending_answers").eq("id", botId).single();
       if (error) throw error;
       return data as any;
     },
@@ -117,6 +119,7 @@ function Studio() {
         if (j.result?.questions?.length) {
           setQuestionPrompt(j.result.prompt || "সংযুক্ত ছবির emoji অনুযায়ী কাজ করুন");
           setQuestionMode(j.result.mode ?? "build");
+          setInitialAnswers(null);
           setQuestions(j.result.questions);
         }
         await refresh();
@@ -242,6 +245,7 @@ function Studio() {
         <div className="flex shrink-0 rounded-xl border border-border p-0.5">
           {(["chat", "plan", "build"] as const).map((m) => <button key={m} onClick={() => setMode(m)} className={`rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:px-3 ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{m === "chat" ? "Chat" : m === "plan" ? "Plan" : "Build"}</button>)}
         </div>
+        <button onClick={async () => { const next = bot?.emoji_mode === "normal" ? "premium" : "normal"; await prefsFn({ data: { botId, emojiMode: next } }); refresh(); toast.success(next === "premium" ? "Emoji mode: Premium" : "Emoji mode: Normal"); }} className="hidden shrink-0 rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground sm:block" aria-label="Emoji mode">Emoji: {bot?.emoji_mode === "normal" ? "Normal" : bot?.emoji_mode === "premium" ? "Premium" : "—"}</button>
         <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setDrawer("files")} aria-label="ফাইল"><FileCode2 /></Button>
         <Button variant="ghost" size="icon" onClick={() => setSecretsOpen(true)} aria-label="সেটিংস"><Settings /></Button>
       </header>
@@ -298,6 +302,13 @@ function Studio() {
                   </div>
                 );
               })}
+              {!busy && !questions && (bot?.pending_questions?.questions?.length || messages[messages.length - 1]?.mode === "plan") && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 p-3 text-sm">
+                  <span className="flex-1">আগের প্ল্যান আছে — চালিয়ে যান / নতুন প্ল্যান</span>
+                  <Button size="sm" onClick={() => { const pq = bot?.pending_questions; if (pq?.questions?.length) { setQuestionPrompt(pq.prompt); setQuestionMode(pq.mode ?? "plan"); setInitialAnswers(bot?.pending_answers ?? null); setQuestions(pq.questions); } else endRef.current?.scrollIntoView({ behavior: "smooth" }); }}>চালিয়ে যান</Button>
+                  <Button size="sm" variant="outline" onClick={async () => { await prefsFn({ data: { botId, clearPending: true } }); refresh(); setMode("plan"); setInput(""); inputRef.current?.focus(); }}>নতুন প্ল্যান</Button>
+                </div>
+              )}
               {busy && <BuildProgress elapsed={now - busy.at} mode={busy.mode === "build" ? "build" : "plan"} step={jobStep} onStop={stop} />}
               {busy?.mode === "build" && subtasks.length > 0 && (
                 <div className="rounded-2xl border border-border bg-card p-3 text-xs">
@@ -399,7 +410,7 @@ function Studio() {
       </Sheet>
 
       <SecretsDialog open={secretsOpen} hasToken={!!st?.hasToken} onClose={() => { setSecretsOpen(false); setPending(null); }} onSave={onSaveSecrets} />
-      <BotQuestionDialog questions={questions} onCancel={() => setQuestions(null)} onDone={(a) => { const p = questionPrompt; const m = questionMode; setQuestions(null); send(p, m, a); }} />
+      <BotQuestionDialog questions={questions} initial={initialAnswers} onProgress={(a) => { void prefsFn({ data: { botId, pendingAnswers: a } }).catch(() => {}); }} onCancel={() => setQuestions(null)} onDone={(a) => { const p = questionPrompt; const m = questionMode; setQuestions(null); send(p, m, a); }} />
     </div>
   );
 }

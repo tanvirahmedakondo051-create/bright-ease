@@ -68,6 +68,7 @@ function Studio() {
   const runId = useRef(0);
   const jobRef = useRef<string | null>(null);
   const [jobStep, setJobStep] = useState("");
+  const [subtasks, setSubtasks] = useState<{ key: string; title: string; status: string; lines: number }[]>([]);
   const retryRef = useRef<null | (() => void)>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -111,6 +112,7 @@ function Studio() {
       seen = j.total ?? seen;
       const lastEvent = j.events?.[j.events.length - 1];
       if (lastEvent?.step) setJobStep(lastEvent.step);
+      setSubtasks(j.subtasks ?? []);
       if (j.status === "done") {
         if (j.result?.imageNotice) toast.info(j.result.imageNotice);
         if (j.result?.questions?.length) {
@@ -148,6 +150,7 @@ function Studio() {
     setMode(selectedMode);
     setRequestError(null);
     setJobStep("");
+    setSubtasks([]);
     retryRef.current = () => send(text, selectedMode, answers, att);
     setBusy({ mode: selectedMode, at: Date.now() });
     setInput("");
@@ -304,6 +307,22 @@ function Studio() {
                 );
               })}
               {busy && <BuildProgress elapsed={now - busy.at} mode={busy.mode === "build" ? "build" : "plan"} step={jobStep} onStop={stop} />}
+              {busy?.mode === "build" && subtasks.length > 0 && (
+                <div className="rounded-2xl border border-border bg-card p-3 text-xs">
+                  <p className="mb-2 font-semibold">সাব-এজেন্ট টাস্ক</p>
+                  <ul className="space-y-1.5">
+                    {subtasks.map((t) => (
+                      <li key={t.key} className="flex items-center justify-between gap-2">
+                        <span className="truncate">{t.title}</span>
+                        <span className="flex shrink-0 items-center gap-2 text-muted-foreground">
+                          {t.lines > 0 && <span className="font-en">{t.lines} লাইন</span>}
+                          <span className={`rounded-full px-2 py-0.5 font-medium ${t.status === "done" ? "bg-success/15 text-success" : t.status === "failed" ? "bg-destructive/15 text-destructive" : t.status === "running" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>{t.status === "done" ? "done" : t.status === "failed" ? "failed" : t.status === "running" ? "running" : t.status}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {busy?.mode === "build" && <p className="text-center text-xs text-muted-foreground">বিল্ড সার্ভারে চলছে — স্ক্রিন বন্ধ বা অ্যাপ বদলালেও থামবে না</p>}
               {!busy && requestError && (
                 <div role="alert" className="rounded-2xl border border-destructive/35 bg-destructive/10 p-4">

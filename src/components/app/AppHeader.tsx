@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { LogOut, Shield } from "lucide-react";
 import { Logo } from "@/components/site/Brand";
 import { AnnouncementBar } from "@/components/site/SiteHeader";
@@ -10,6 +11,7 @@ export function AppHeader() {
   const { user } = useSession();
   const { data: isAdmin } = useIsAdmin(user?.id);
   const nav = useNavigate();
+  const qc = useQueryClient();
   return (
     <>
       <AnnouncementBar />
@@ -24,9 +26,12 @@ export function AppHeader() {
               </Link>
             )}
             <button
+              aria-label="লগআউট"
               onClick={async () => {
+                await qc.cancelQueries();
+                qc.clear();
                 await supabase.auth.signOut();
-                nav({ to: "/" });
+                nav({ to: "/login", replace: true });
               }}
               className="flex min-h-12 items-center gap-1.5 rounded-xl px-3 text-sm text-muted-foreground hover:bg-accent"
             >

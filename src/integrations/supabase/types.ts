@@ -1609,6 +1609,8 @@ export type Database = {
         Args: { _amount: number; _reason: string; _type: string; _user: string }
         Returns: number
       }
+      backup_auth_rows: { Args: never; Returns: Json }
+      backup_table_list: { Args: never; Returns: string[] }
       daily_coin_refill: { Args: never; Returns: number }
       has_role: {
         Args: {

@@ -401,8 +401,8 @@ const attachmentsSchema = z.array(z.object({ name: z.string().max(200), kind: z.
   .refine((a) => !a || (a.reduce((n, x) => n + x.content.length, 0) <= 40_000_000 && a.every((x) =>
     x.kind === "image" ? /^data:image\/(jpeg|png|webp|gif);base64,/.test(x.content)
     : x.kind === "pdf" ? /^data:application\/pdf;base64,/.test(x.content)
-    : x.kind === "video" ? (() => { try { const f = JSON.parse(x.content); return Array.isArray(f) && f.length <= 4 && f.every((u: unknown) => typeof u === "string" && u.startsWith("data:image/jpeg;base64,")); } catch { return false; } })()
-    : x.content.length <= 300_000)), "Invalid attachments");
+    : x.kind === "video" ? (() => { try { const f = JSON.parse(x.content); return Array.isArray(f) && f.length <= 8 && f.every((u: unknown) => typeof u === "string" && u.startsWith("data:image/jpeg;base64,")); } catch { return false; } })()
+    : x.content.length <= 300_000)), "ফাইলগুলো পড়া যায়নি — ছবি/ভিডিও আবার যোগ করে চেষ্টা করুন");
 
 export const botChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

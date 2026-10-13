@@ -318,3 +318,43 @@ export const adminDeleteBrain = createServerFn({ method: "POST" })
     await db.from("bot_brain").delete().eq("id", data.id);
     return { ok: true };
   });
+
+export const adminDownloadBackup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const db = await adminDb(context);
+    const { buildSqlBackup } = await import("./backup.server");
+    const { sql, rows } = await buildSqlBackup(db);
+    return { sql, rows };
+  });
+
+export const adminGetBackupConfig = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const db = await adminDb(context);
+    const { data } = await db.from("app_secrets").select("name,value").in("name", ["backup_bot_token", "backup_chat_id"]);
+    const tok = data?.find((r: any) => r.name === "backup_bot_token")?.value ?? "";
+    return { tokenMasked: tok ? mask(tok) : "", chatId: data?.find((r: any) => r.name === "backup_chat_id")?.value ?? "" };
+  });
+
+export const adminSaveBackupConfig = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ token: z.string().max(200), chatId: z.string().regex(/^-?\d{3,20}$/) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const db = await adminDb(context);
+    const rows = [{ name: "backup_chat_id", value: data.chatId }];
+    if (data.token.trim()) {
+      if (!/^\d+:[\w-]{30,}$/.test(data.token.trim())) return { error: "Bot token সঠিক নয়" };
+      rows.push({ name: "backup_bot_token", value: data.token.trim() });
+    }
+    const { error } = await db.from("app_secrets").upsert(rows, { onConflict: "name" });
+    return error ? { error: error.message } : { ok: true as const };
+  });
+
+export const adminSendBackupNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const db = await adminDb(context);
+    const { sendBackupToTelegram } = await import("./backup.server");
+    return sendBackupToTelegram(db);
+  });

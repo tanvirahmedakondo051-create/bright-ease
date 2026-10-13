@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Copy, Eye, EyeOff, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { adminGetAuraKey, adminGetBotSettings, adminGetDeployToken, adminNewDeployToken, adminSaveBotSettings, adminSaveEmojiMap, adminSetAuraKey, adminTestAgent } from "@/lib/admin.functions";
+import { adminDownloadBackup, adminGetBackupConfig, adminSaveBackupConfig, adminSendBackupNow, adminGetAuraKey, adminGetBotSettings, adminGetDeployToken, adminNewDeployToken, adminSaveBotSettings, adminSaveEmojiMap, adminSetAuraKey, adminTestAgent } from "@/lib/admin.functions";
 import { PageTitle, Panel } from "@/components/admin/ui";
 import { Field, Toggle, inputCls } from "@/components/admin/fields";
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,7 @@ function Settings() {
       </Panel>
 
       <AuraKey />
+      <BackupPanel />
       <Button onClick={saveGeneral} disabled={saving} className="h-12 w-full sm:w-auto">{saving && <Loader2 className="animate-spin" />}সব সেটিংস সেভ করুন</Button>
     </div>
   );
@@ -152,4 +153,25 @@ function EmojiLibrary({ rows, setRows, onSave }: { rows: EmojiRow[]; setRows: (r
       <Button className="mt-4" onClick={() => onSave()}>Save all</Button>
     </Panel>
   );
+}
+
+function BackupPanel() {
+  const get = useServerFn(adminGetBackupConfig); const save = useServerFn(adminSaveBackupConfig); const send = useServerFn(adminSendBackupNow); const dl = useServerFn(adminDownloadBackup);
+  const { data, refetch } = useQuery({ queryKey: ["backup-config"], queryFn: () => get() });
+  const [token, setToken] = useState(""); const [chat, setChat] = useState(""); const [busy, setBusy] = useState("");
+  useEffect(() => { if (data?.chatId) setChat(data.chatId); }, [data]);
+  const run = async (k: string, fn: () => Promise<void>) => { setBusy(k); try { await fn(); } catch (e: any) { toast.error(e?.message ?? "ব্যর্থ হয়েছে"); } finally { setBusy(""); } };
+  return <Panel title="সম্পূর্ণ ডাটা ব্যাকআপ (SQL)">
+    <p className="mb-3 text-sm text-muted-foreground">প্রতিদিন রাত ১২টায় (বাংলাদেশ সময়) শুরু থেকে আজ পর্যন্ত সব ডাটা — ইউজার (পাসওয়ার্ডসহ), বট, কয়েন, পেমেন্ট, সেটিংস — একটি .sql ফাইলে আপনার Telegram-এ যাবে। অন্য সার্ভারে শুধু সর্বশেষ ফাইলটা চালালেই পুরো ওয়েব ফিরে আসবে।</p>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <Field label={`Backup bot token ${data?.tokenMasked ? `(সেভ আছে: ${data.tokenMasked})` : ""}`}><input type="password" className={`${inputCls} font-en`} value={token} onChange={(e) => setToken(e.target.value)} placeholder="123456:ABC..." /></Field>
+      <Field label="আপনার Telegram chat ID"><input inputMode="numeric" className={`${inputCls} font-en`} value={chat} onChange={(e) => setChat(e.target.value.trim())} placeholder="123456789" /></Field>
+    </div>
+    <p className="mt-1 text-xs text-muted-foreground">BotFather থেকে একটা বট বানান, সেই বটকে একবার /start দিন। chat ID জানতে @userinfobot-কে মেসেজ দিন।</p>
+    <div className="mt-3 flex flex-wrap gap-2">
+      <Button disabled={!!busy} onClick={() => run("save", async () => { const r = await save({ data: { token, chatId: chat } }); if ("error" in r) throw new Error(r.error); setToken(""); refetch(); toast.success("সেভ হয়েছে"); })}>{busy === "save" && <Loader2 className="animate-spin" />}Save</Button>
+      <Button variant="outline" disabled={!!busy} onClick={() => run("send", async () => { const r = await send(); if ("error" in r) throw new Error(r.error); toast.success(`Telegram-এ পাঠানো হয়েছে (${r.rows} rows)`); })}>{busy === "send" && <Loader2 className="animate-spin" />}এখনই Telegram-এ পাঠান</Button>
+      <Button variant="outline" disabled={!!busy} onClick={() => run("dl", async () => { const r = await dl(); const url = URL.createObjectURL(new Blob([r.sql], { type: "application/sql" })); const a = document.createElement("a"); a.href = url; a.download = `hexa_backup_${new Date().toISOString().slice(0, 10)}.sql`; a.click(); URL.revokeObjectURL(url); toast.success(`ডাউনলোড হয়েছে (${r.rows} rows)`); })}>{busy === "dl" && <Loader2 className="animate-spin" />}.sql ডাউনলোড</Button>
+    </div>
+  </Panel>;
 }

@@ -33,6 +33,7 @@ import { Route as ApiPublicGenerateRouteImport } from './routes/api/public/gener
 import { Route as ApiPublicJobStatusRouteImport } from './routes/api/public/job-status'
 import { Route as AuthenticatedAdminPlansIndexRouteImport } from './routes/_authenticated/admin.plans.index'
 import { Route as AuthenticatedAdminPlansIdRouteImport } from './routes/_authenticated/admin.plans.$id'
+import { Route as ApiPublicCronBackupRouteImport } from './routes/api/public/cron/backup'
 import { Route as ApiPublicCronExpiryRouteImport } from './routes/api/public/cron/expiry'
 import { Route as ApiPublicCronProcessJobsRouteImport } from './routes/api/public/cron/process-jobs'
 
@@ -162,6 +163,11 @@ const AuthenticatedAdminPlansIdRoute =
     path: '/plans/$id',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const ApiPublicCronBackupRoute = ApiPublicCronBackupRouteImport.update({
+  id: '/api/public/cron/backup',
+  path: '/api/public/cron/backup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCronExpiryRoute = ApiPublicCronExpiryRouteImport.update({
   id: '/api/public/cron/expiry',
   path: '/api/public/cron/expiry',
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/api/public/job-status': typeof ApiPublicJobStatusRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/plans/$id': typeof AuthenticatedAdminPlansIdRoute
+  '/api/public/cron/backup': typeof ApiPublicCronBackupRoute
   '/api/public/cron/expiry': typeof ApiPublicCronExpiryRoute
   '/api/public/cron/process-jobs': typeof ApiPublicCronProcessJobsRoute
   '/admin/plans/': typeof AuthenticatedAdminPlansIndexRoute
@@ -223,6 +230,7 @@ export interface FileRoutesByTo {
   '/api/public/job-status': typeof ApiPublicJobStatusRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/plans/$id': typeof AuthenticatedAdminPlansIdRoute
+  '/api/public/cron/backup': typeof ApiPublicCronBackupRoute
   '/api/public/cron/expiry': typeof ApiPublicCronExpiryRoute
   '/api/public/cron/process-jobs': typeof ApiPublicCronProcessJobsRoute
   '/admin/plans': typeof AuthenticatedAdminPlansIndexRoute
@@ -252,6 +260,7 @@ export interface FileRoutesById {
   '/api/public/job-status': typeof ApiPublicJobStatusRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/plans/$id': typeof AuthenticatedAdminPlansIdRoute
+  '/api/public/cron/backup': typeof ApiPublicCronBackupRoute
   '/api/public/cron/expiry': typeof ApiPublicCronExpiryRoute
   '/api/public/cron/process-jobs': typeof ApiPublicCronProcessJobsRoute
   '/_authenticated/admin/plans/': typeof AuthenticatedAdminPlansIndexRoute
@@ -281,6 +290,7 @@ export interface FileRouteTypes {
     | '/api/public/job-status'
     | '/admin/'
     | '/admin/plans/$id'
+    | '/api/public/cron/backup'
     | '/api/public/cron/expiry'
     | '/api/public/cron/process-jobs'
     | '/admin/plans/'
@@ -307,6 +317,7 @@ export interface FileRouteTypes {
     | '/api/public/job-status'
     | '/admin'
     | '/admin/plans/$id'
+    | '/api/public/cron/backup'
     | '/api/public/cron/expiry'
     | '/api/public/cron/process-jobs'
     | '/admin/plans'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/api/public/job-status'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/plans/$id'
+    | '/api/public/cron/backup'
     | '/api/public/cron/expiry'
     | '/api/public/cron/process-jobs'
     | '/_authenticated/admin/plans/'
@@ -352,6 +364,7 @@ export interface RootRouteChildren {
   ApiPublicBotJobRunRoute: typeof ApiPublicBotJobRunRoute
   ApiPublicGenerateRoute: typeof ApiPublicGenerateRoute
   ApiPublicJobStatusRoute: typeof ApiPublicJobStatusRoute
+  ApiPublicCronBackupRoute: typeof ApiPublicCronBackupRoute
   ApiPublicCronExpiryRoute: typeof ApiPublicCronExpiryRoute
   ApiPublicCronProcessJobsRoute: typeof ApiPublicCronProcessJobsRoute
 }
@@ -526,6 +539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPlansIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/cron/backup': {
+      id: '/api/public/cron/backup'
+      path: '/api/public/cron/backup'
+      fullPath: '/api/public/cron/backup'
+      preLoaderRoute: typeof ApiPublicCronBackupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/expiry': {
       id: '/api/public/cron/expiry'
       path: '/api/public/cron/expiry'
@@ -599,6 +619,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBotJobRunRoute: ApiPublicBotJobRunRoute,
   ApiPublicGenerateRoute: ApiPublicGenerateRoute,
   ApiPublicJobStatusRoute: ApiPublicJobStatusRoute,
+  ApiPublicCronBackupRoute: ApiPublicCronBackupRoute,
   ApiPublicCronExpiryRoute: ApiPublicCronExpiryRoute,
   ApiPublicCronProcessJobsRoute: ApiPublicCronProcessJobsRoute,
 }

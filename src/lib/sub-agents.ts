@@ -203,3 +203,16 @@ ${pick(out.user, s.user)}
 ${tail}
 `;
 }
+
+/** True when an upgrade-agent reply opened === CODE === but never closed it (reply was cut off). */
+export function upgradeCutOff(text: string) {
+  return /===\s*CODE\s*===/i.test(text) && !/===\s*END CODE\s*===/i.test(text);
+}
+
+export type FlowSpec = { screens: { id: string; title?: string; text?: string; buttons?: { label: string; emoji?: string; style?: string; goes_to?: string }[][] }[] };
+
+/** Bangla list shown in chat + strict blueprint text for the AI. */
+export function flowToText(f: FlowSpec) {
+  return f.screens.map((s, i) => `স্ক্রিন ${i + 1} (${s.id}${s.title ? " — " + s.title : ""}):` + (s.text ? `\n  লেখা: ${s.text.slice(0, 200)}` : "") +
+    (s.buttons ?? []).map((row, r) => `\n  সারি ${r + 1}: ` + row.map((b) => `${b.emoji ? b.emoji + " " : ""}${b.label}${b.goes_to ? " → " + b.goes_to : ""}${b.style ? ` [${b.style}]` : ""}`).join(" | ")).join("")).join("\n");
+}

@@ -25,7 +25,7 @@ function resizeImage(file: File): Promise<string> {
   });
 }
 
-function videoFrames(file: File, count = 3): Promise<{ frames: string[]; duration: number }> {
+function videoFrames(file: File, count = 8): Promise<{ frames: string[]; duration: number }> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const v = document.createElement("video");

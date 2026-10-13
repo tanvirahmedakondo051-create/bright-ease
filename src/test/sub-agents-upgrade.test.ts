@@ -29,3 +29,12 @@ describe("parallel upgrade", () => {
     expect(shouldSplitUpgrade(app, false)).toBe(false);
   });
 });
+
+import { upgradeCutOff, flowToText } from "@/lib/sub-agents";
+describe("upgradeCutOff", () => {
+  it("detects missing END CODE", () => { expect(upgradeCutOff("=== CODE ===\ndef a():")).toBe(true); });
+  it("complete reply is not cut", () => { expect(upgradeCutOff("=== CODE ===\nx\n=== END CODE ===")).toBe(false); });
+  it("flow text lists buttons in order", () => {
+    expect(flowToText({ screens: [{ id: "start", buttons: [[{ label: "দোকান", emoji: "🛍", goes_to: "shop" }, { label: "কার্ট" }]] }] })).toContain("সারি 1: 🛍 দোকান → shop | কার্ট");
+  });
+});

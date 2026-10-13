@@ -255,7 +255,7 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
     const content = r.reply.replace(/VERDICT:.*$/im, "").replace(/FIX_BRIEF:[\s\S]*$/i, "").trim();
     const now = new Date().toISOString();
     const attNames = (data.attachments ?? []).map((a) => `📎 ${a.name}`).join("\n");
-    const msgs: BotMsg[] = [...history, { role: "user", content: attNames ? `${data.prompt}\n\n${attNames}` : data.prompt, mode: "chat", at: now }, { role: "assistant", content, mode: "chat", at: now, ms: Date.now() - started }];
+    const msgs: BotMsg[] = [...history, { role: "user", content: attNames ? `${data.prompt}\n\n${attNames}` : data.prompt, mode: "chat", at: now }, { role: "assistant", content: content + flowNote(), mode: "chat", at: now, ms: Date.now() - started }];
     await db.from("bots").update({ messages: msgs, updated_at: now } as any).eq("id", bot.id);
     return { ok: true, coins: 0, chat: true, needsBuildFix: verdict === "code_bug", fixBrief: brief, imageNotice };
   }
@@ -273,7 +273,7 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
       }
       const { data: row } = await db.from("bot_subtasks").insert({ job_id: ctx.jobId, bot_id: bot.id, user_id: userId, sig, key, title: SECTION_TITLES[key], status: "running", attempts: 1 } as any).select("id").single();
       const id = row?.id;
-      const r = await generate([{ role: "system", content: sys }, { role: "user", content: userText }], async (lines) => {
+      const r = await generate([{ role: "system", content: sys }, { role: "user", content: userText + flowBlock }], async (lines) => {
         const { data: j } = await db.from("bot_jobs").select("status").eq("id", ctx.jobId).maybeSingle();
         if (j?.status === "cancelled") { await db.from("bot_subtasks").update({ status: "cancelled" }).eq("id", id); throw new Error("JOB_CANCELLED"); }
         const t = new Date().toISOString();

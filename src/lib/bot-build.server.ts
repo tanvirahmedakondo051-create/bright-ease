@@ -226,6 +226,26 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
     }
     return { ...r, reply: text };
   };
+  let flowText = "", flowBlock = "";
+  if (images.length && imagesOn) {
+    await emit?.("ছবি/ভিডিও থেকে ফ্লো পড়া হচ্ছে…");
+    const fr = await callAI([
+      { role: "system", content: 'You read screenshots / screen-recording frames (in order) of a Telegram bot and extract its exact flow. Return ONLY JSON: {"screens":[{"id":"start","title":"short","text":"message text shown","buttons":[[{"label":"button text without emoji","emoji":"leading emoji or empty","style":"primary|success|danger or empty","goes_to":"screen id it opens"}]]}]}. One entry per distinct screen, buttons row by row in visible order. Copy visible text exactly. Use "?" for goes_to when unclear. No commentary.' },
+      { role: "user", content: [{ type: "text", text: "Extract the flow." + videoNote }, ...images.map((url) => ({ type: "image_url", image_url: { url } }))] },
+    ]).catch(() => null);
+    try {
+      const raw = fr?.reply?.match(/\{[\s\S]*\}/)?.[0];
+      const spec = raw ? JSON.parse(raw) : null;
+      if (spec?.screens?.length) {
+        const { flowToText } = await import("@/lib/sub-agents");
+        flowText = flowToText(spec);
+        flowBlock = `\n\nREFERENCE FLOW (from the user's pictures/video — follow EXACTLY: same screens, same button text and row order, same navigation; "?" targets = ask or choose sensibly):\n${JSON.stringify(spec).slice(0, 12000)}`;
+        const last = messages[messages.length - 1];
+        if (Array.isArray(last.content)) last.content[0].text += flowBlock; else last.content += flowBlock;
+      }
+    } catch { /* flow optional */ }
+  }
+  const flowNote = () => (flowText ? `\n\n📋 ছবি/ভিডিও থেকে পাওয়া ফ্লো:\n${flowText}` : "");
   await emit?.("AI কোড লিখছে…");
   if (isChat) {
     const r = await callAI(messages);
@@ -294,19 +314,33 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
   // Each agent rewrites only its own section (or says UNCHANGED), so nobody rewrites 2,500 lines.
   // Returns null to fall back to the normal single full rewrite.
   const runSplitUpgrade = async () => {
-    const { splitExistingApp, upgradePrompt, parseUpgrade, mergeUpgrade, SECTION_TITLES } = await import("@/lib/sub-agents");
+    const { splitExistingApp, upgradePrompt, parseUpgrade, mergeUpgrade, SECTION_TITLES, upgradeCutOff } = await import("@/lib/sub-agents");
     const s = splitExistingApp(files.find((f) => f.path === MAIN_FILE)?.content ?? "");
     if (!s) return null;
     let total = 0;
     const run = async (key: "core" | "user" | "admin", sec: typeof s) => {
       const { data: row } = await db.from("bot_subtasks").insert({ job_id: ctx.jobId, bot_id: bot.id, user_id: userId, sig: "upgrade", key, title: SECTION_TITLES[key], status: "running", attempts: 1 } as any).select("id").single();
       const id = row?.id;
-      const r = await callAI([{ role: "system", content: `${upgradePrompt(key, sec)}\n${R}` }, { role: "user", content: userText }], "", async (lines) => {
+      const base = [{ role: "system", content: `${upgradePrompt(key, sec)}\n${R}` }, { role: "user", content: userText + flowBlock }];
+      const prog = async (lines: number) => {
         const { data: j } = await db.from("bot_jobs").select("status").eq("id", ctx.jobId).maybeSingle();
         if (j?.status === "cancelled") { await db.from("bot_subtasks").update({ status: "cancelled" }).eq("id", id); throw new Error("JOB_CANCELLED"); }
         const t = new Date().toISOString();
         await Promise.all([db.from("bot_subtasks").update({ lines, heartbeat_at: t }).eq("id", id), db.from("bot_jobs").update({ heartbeat_at: t, updated_at: t }).eq("id", ctx.jobId)]);
-      });
+      };
+      const once = async () => {
+        let r = await callAI(base, "", prog);
+        let text = r.reply;
+        for (let i = 0; text && i < 4 && (/length|max_tokens/i.test(r.finish) || upgradeCutOff(text)); i++) {
+          await emit?.(`${SECTION_TITLES[key]} — অংশ ${i + 2} আনা হচ্ছে…`);
+          const c = await callAI([...base, { role: "assistant", content: text }, { role: "user", content: "Your reply was cut off. Continue EXACTLY where you stopped, starting with the very next character. No repeat, no preface, keep the same === CODE === / === END CODE === format." }], text, prog);
+          if (!c.reply) break;
+          text += c.reply; total += c.tokens; r = { ...c, reply: text, tokens: r.tokens };
+        }
+        return { ...r, reply: text };
+      };
+      let r = await once();
+      if (!r.reply || !parseUpgrade(r.reply)) { total += r.tokens; await emit?.(`${SECTION_TITLES[key]} — আবার চেষ্টা…`); r = await once(); }
       total += r.tokens;
       const out = r.reply ? parseUpgrade(r.reply) : null;
       await db.from("bot_subtasks").update(out ? { status: "done", output: r.reply, tokens: r.tokens, lines: r.reply.split("\n").length } : { status: "failed", error: "উত্তর পড়া যায়নি" }).eq("id", id);
@@ -362,7 +396,7 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
     const arr = (v: unknown) => (Array.isArray(v) ? v.map(String).slice(0, 20) : []);
     const pl = parsed?.plan;
     const plan: BotPlan | undefined = pl && typeof pl === "object" ? { summary: String(pl.summary ?? ""), menus: arr(pl.menus), features: arr(pl.features), files: arr(pl.files).length ? arr(pl.files) : ALLOWED_FILES, acceptance: arr(pl.acceptance) } : undefined;
-    assistant = { role: "assistant", content: plan?.summary || String(pl ?? reply).trim(), mode: "plan", at: now, plan, coins, ms };
+    assistant = { role: "assistant", content: (plan?.summary || String(pl ?? reply).trim()) + flowNote(), mode: "plan", at: now, plan, coins, ms };
   } else {
     if (Array.isArray(parsed?.questions) && parsed.questions.length) {
       const qs = z.array(z.object({ q: z.string(), options: z.array(z.string()) })).safeParse(parsed.questions);
@@ -426,7 +460,7 @@ export async function runBotChat(db: any, userId: string, data: BotChatData, emi
     newFiles = list;
     const checks = validateBot(list.find((f: any) => f.path === MAIN_FILE)?.content ?? "", list.find((f: any) => f.path === "requirements.txt")?.content ?? "");
     const changes = out.changes ? `\n\nযা বদলেছে:\n${out.changes}` : "";
-    assistant = { role: "assistant", content: (out.summary || (isFix ? "বট আপগ্রেড হয়েছে।" : "বট তৈরি হয়েছে।")) + changes + checklistText(checks), mode: isFix ? "fix" : "build", at: now, coins, ms: Date.now() - started };
+    assistant = { role: "assistant", content: (out.summary || (isFix ? "বট আপগ্রেড হয়েছে।" : "বট তৈরি হয়েছে।")) + changes + checklistText(checks) + flowNote(), mode: isFix ? "fix" : "build", at: now, coins, ms: Date.now() - started };
     await emit?.("ফাইল সেভ হচ্ছে…");
     await db.from("bot_versions").insert({ bot_id: bot.id, user_id: userId, files: list, note: assistant.content.slice(0, 200), coins_used: coins } as any);
     const b = out.brainRow;
